@@ -6,7 +6,9 @@ Users are defined via environment variables ending in _USER:
 
 Security features:
 - Tokens expire after 24 hours
-- Rate limiting on login (5 attempts per 5 minutes per IP)
+- Rate limiting per IP (5 attempts per 5 minutes)
+- Global circuit breaker: blocks login if too many failures from different IPs
+  (protects against VPN/Tor distributed brute force attacks)
 """
 from __future__ import annotations
 
@@ -26,10 +28,18 @@ from app.config import get_settings
 # Token expiration time (24 hours in seconds)
 TOKEN_EXPIRY_SECONDS = 24 * 60 * 60
 
-# Rate limiting: {ip: (attempts, first_attempt_timestamp)}
+# Rate limiting per IP: {ip: (attempts, first_attempt_timestamp)}
 _login_attempts: dict[str, tuple[int, float]] = {}
 RATE_LIMIT_WINDOW = 300  # 5 minutes
 MAX_LOGIN_ATTEMPTS = 5
+
+# Global circuit breaker for distributed attacks
+# If we see too many failures from different IPs in a short window, block all logins
+_global_failures: list[float] = []  # timestamps of failed attempts
+GLOBAL_FAILURE_WINDOW = 60  # 1 minute window
+MAX_GLOBAL_FAILURES = 20  # Max 20 failures from different IPs in 1 minute
+GLOBAL_LOCKOUT_DURATION = 600  # 10 minutes lockout if threshold exceeded
+_global_lockout_until: float = 0  # timestamp when lockout ends
 
 
 @dataclass
@@ -119,6 +129,51 @@ def get_token_username(token: str) -> str | None:
     return info.username if info else None
 
 
+def check_global_circuit_breaker() -> tuple[bool, str]:
+    """Check if global circuit breaker has triggered.
+    
+    Protects against distributed brute force attacks using multiple IPs/VPNs/Tor.
+    
+    Returns (allowed, reason). If not allowed, reason contains lockout time remaining.
+    """
+    global _global_lockout_until
+    
+    now = time.time()
+    
+    # Check if currently in lockout
+    if now < _global_lockout_until:
+        remaining = int(_global_lockout_until - now)
+        return False, f"Login temporarily disabled due to suspicious activity. Try again in {remaining} seconds."
+    
+    # Clean up old failures outside window
+    cutoff = now - GLOBAL_FAILURE_WINDOW
+    _global_failures[:] = [ts for ts in _global_failures if ts > cutoff]
+    
+    # Check if too many failures
+    if len(_global_failures) >= MAX_GLOBAL_FAILURES:
+        # Trigger lockout
+        _global_lockout_until = now + GLOBAL_LOCKOUT_DURATION
+        _global_failures.clear()
+        
+        # Log security event
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(
+            "SECURITY ALERT: Global login lockout triggered! "
+            f"{MAX_GLOBAL_FAILURES} failed attempts in {GLOBAL_FAILURE_WINDOW}s. "
+            f"Login blocked for {GLOBAL_LOCKOUT_DURATION}s."
+        )
+        
+        return False, f"Security alert detected. Login disabled for {GLOBAL_LOCKOUT_DURATION // 60} minutes."
+    
+    return True, ""
+
+
+def record_failed_attempt() -> None:
+    """Record a failed login attempt for global tracking."""
+    _global_failures.append(time.time())
+
+
 def check_rate_limit(client_ip: str) -> bool:
     """Check if client IP is rate limited.
     
@@ -141,10 +196,13 @@ def check_rate_limit(client_ip: str) -> bool:
 
 
 def log_failed_login(username: str, client_ip: str) -> None:
-    """Log failed login attempt for monitoring."""
+    """Log failed login attempt for monitoring and record for circuit breaker."""
     import logging
     logger = logging.getLogger(__name__)
     logger.warning("Failed login attempt: username='%s' from ip='%s'", username, client_ip)
+    
+    # Record for global circuit breaker (distributed attack detection)
+    record_failed_attempt()
 
 
 async def require_auth(
@@ -183,7 +241,12 @@ def authenticate_user(username: str, password: str, client_ip: str) -> tuple[str
     
     Returns (token, error_message). Token is None if auth failed.
     """
-    # Check rate limiting
+    # Check global circuit breaker first (distributed attack protection)
+    allowed, reason = check_global_circuit_breaker()
+    if not allowed:
+        return None, reason
+    
+    # Check per-IP rate limiting
     if not check_rate_limit(client_ip):
         return None, "Too many login attempts. Please try again in 5 minutes."
     
