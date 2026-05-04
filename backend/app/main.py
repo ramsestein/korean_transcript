@@ -95,9 +95,18 @@ async def login(request: Request, settings: Annotated[Settings, Depends(get_sett
     if not settings.auth_enabled:
         return JSONResponse({"token": "disabled", "username": "anonymous", "message": "Authentication is disabled"})
     
-    body = await request.json()
-    username = body.get("username", "").strip()
-    password = body.get("password", "")
+    # Parse JSON body with better error handling
+    try:
+        body = await request.json()
+    except Exception as e:
+        logger.error(f"Failed to parse login request body: {e}")
+        raise HTTPException(status_code=400, detail=f"Invalid JSON body: {str(e)}")
+    
+    if not isinstance(body, dict):
+        raise HTTPException(status_code=400, detail="Request body must be a JSON object")
+    
+    username = body.get("username", "").strip() if body.get("username") else ""
+    password = body.get("password", "") if body.get("password") else ""
     
     if not username or not password:
         raise HTTPException(status_code=400, detail="Username and password required")
