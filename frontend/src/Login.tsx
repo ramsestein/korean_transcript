@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 type Props = {
   onLogin: (token: string, username: string) => void;
@@ -12,7 +12,11 @@ export function Login({ onLogin }: Props) {
   const [authEnabled, setAuthEnabled] = useState(true);
   const [availableUsers, setAvailableUsers] = useState<string[]>([]);
 
-  // Check if auth is actually required and get available users
+  // Use ref to avoid infinite re-renders from useEffect dependency changes
+  const onLoginRef = useRef(onLogin);
+  onLoginRef.current = onLogin;
+
+  // Check if auth is actually required and get available users (runs once on mount)
   useEffect(() => {
     fetch('/api/auth/status')
       .then(r => r.json())
@@ -20,7 +24,7 @@ export function Login({ onLogin }: Props) {
         setAuthEnabled(data.auth_enabled);
         setAvailableUsers(data.users_configured || []);
         if (!data.auth_enabled) {
-          onLogin('disabled', 'anonymous');
+          onLoginRef.current('disabled', 'anonymous');
         }
         setChecking(false);
       })
@@ -28,7 +32,8 @@ export function Login({ onLogin }: Props) {
         setChecking(false);
         setError('Cannot connect to server');
       });
-  }, [onLogin]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

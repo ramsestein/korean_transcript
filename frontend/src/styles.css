@@ -20,7 +20,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 #root { min-height: 100vh; display: flex; flex-direction: column; }
 
 /* Layout */
-.app { max-width: 640px; margin: 0 auto; padding: 16px; width: 100%; }
+.app { max-width: 640px; margin: 0 auto; padding: 16px; width: 100%; min-height: 100vh; background: var(--bg); }
 h1 { font-size: 1.4rem; font-weight: 700; text-align: center; margin-bottom: 4px; }
 .subtitle { color: var(--text2); font-size: 0.85rem; text-align: center; margin-bottom: 24px; }
 
