@@ -1,0 +1,5 @@
+# Requirements for testing Korean audio ASR
+# Install with: pip install -r test_requirements.txt
+
+yt-dlp>=2023.0.0
+requests>=2.28.0
