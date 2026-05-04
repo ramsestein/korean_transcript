@@ -16,5 +16,15 @@ export default defineConfig({
   preview: {
     port: 5173,
     host: true,
-  }
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    // Ensure proper handling of JSX/TSX
+    rollupOptions: {
+      output: {
+        manualChunks: undefined,
+      },
+    },
+  },
 })
