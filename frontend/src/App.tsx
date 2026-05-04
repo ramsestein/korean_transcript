@@ -40,7 +40,7 @@ export default function App() {
   const [elapsed, setElapsed] = useState(0);
   const [livePhotos, setLivePhotos] = useState<LivePhoto[]>([]);
 
-  const recorderRef = useRef<ChunkRecorder | null>(null);
+  const recorderRef = useRef<ChunkRecorder | PatchedRecorder | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const segmentMapRef = useRef<Map<string, Segment>>(new Map());
 
@@ -103,7 +103,7 @@ export default function App() {
       // We patch the uploadChunk inside recorder by subclassing
       const patchedRecorder = new PatchedRecorder(sid, token, handleNewSegments);
       recorderRef.current = patchedRecorder;
-      await patchedRecorder.startPatched(sid, token, CHUNK_SECONDS, onChunkUpdate);
+      await patchedRecorder.start(sid, token, CHUNK_SECONDS, onChunkUpdate);
 
       setPhase('recording');
       setElapsed(0);
@@ -390,22 +390,22 @@ function PhotoCapture({ onPhoto }: { onPhoto: (f: File) => void }) {
   );
 }
 
-// --- PatchedRecorder: extends ChunkRecorder to capture response segments ---
+// --- PatchedRecorder: standalone recorder to capture response segments ---
 
-class PatchedRecorder extends ChunkRecorder {
+class PatchedRecorder {
   private sid: string;
   private token: string;
   private onSegs: (segs: Segment[]) => void;
+  private _mr: MediaRecorder | null = null;
+  private _stream: MediaStream | null = null;
 
   constructor(sid: string, token: string, onSegs: (segs: Segment[]) => void) {
-    super();
     this.sid = sid;
     this.token = token;
     this.onSegs = onSegs;
   }
 
-  // Override processChunk behavior by intercepting via custom upload
-  async startPatched(sessionId: string, token: string, chunkSeconds: number, onUpdate: (c: ChunkInfo) => void): Promise<void> {
+  async start(sessionId: string, token: string, chunkSeconds: number, onUpdate: (c: ChunkInfo) => void): Promise<void> {
     this.token = token;
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 },
@@ -478,9 +478,5 @@ class PatchedRecorder extends ChunkRecorder {
     const stream = (this as unknown as { _stream?: MediaStream })._stream;
     if (mr && mr.state !== 'inactive') mr.stop();
     stream?.getTracks().forEach(t => t.stop());
-  }
-
-  async start(sessionId: string, chunkSeconds: number, onUpdate: (c: ChunkInfo) => void): Promise<void> {
-    return this.startPatched(sessionId, chunkSeconds, onUpdate);
   }
 }
