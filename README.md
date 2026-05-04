@@ -1,103 +1,121 @@
-# ko-meeting-interpreter
+# Korean Meeting Interpreter
 
-Real-time Korean-to-multilingual meeting interpreter with dual ASR (OpenAI + Soniox), LLM reconstruction, translation (ES/EN/ZH), and operational summary generation.
+Real-time Korean-to-multilingual meeting interpreter. Capture audio from your browser, get live transcription, reconstruction, and translation to Spanish, English, or Chinese. Upload meeting images for additional context.
 
-## Quick Start
+## Features
 
-### Prerequisites
-- Python 3.11+ (backend & frontend)
-- Docker & Docker Compose (optional)
-- OpenAI API key
-- Soniox API key
-- ffmpeg (for audio processing)
+- **Live Audio Recording**: Browser-based recording with automatic chunk uploads every 15 seconds
+- **Dual ASR**: OpenAI Whisper + optional Soniox for improved accuracy
+- **LLM Reconstruction**: AI reconstructs fragmented Korean into coherent sentences
+- **Translation**: Real-time translation to ES / EN / ZH with terminology consistency
+- **Live Photo Capture**: Snap photos during recording to add visual context to the conversation
+- **Operational Summary**: Generate a structured meeting summary at the end
+- **Docker Ready**: Single-command deployment via Docker Compose
 
-### Environment Setup
+## Quick Start (Docker Recommended)
 
 ```bash
-# Copy environment template
+# 1. Clone
+git clone https://github.com/ramsestein/korean_transcript.git
+cd korean_transcript
+
+# 2. Configure environment
 cp .env.example .env
+# Edit .env: add OPENAI_API_KEY and CORS_ORIGINS
 
-# Edit .env with your API keys
-OPENAI_API_KEY=sk-...
-SONIOX_API_KEY=...
-```
-
-### Backend (Python)
-
-```bash
-cd backend
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python -m uvicorn app.main:app --reload
-```
-
-Backend runs at `http://localhost:8000` with API docs at `/docs`.
-
-### Frontend (Streamlit)
-
-```bash
-cd frontend
-python -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\streamlit run app.py
-```
-
-Frontend runs at `http://localhost:8501`.
-
-### Docker (Full Stack)
-
-```bash
+# 3. Launch
 docker compose up -d --build
+
+# 4. Open browser at http://localhost:5173
 ```
 
-## Testing
+## Environment Variables
 
-```bash
-# Backend unit tests
-cd backend
-.venv\Scripts\python -m pytest tests/unit -v
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OPENAI_API_KEY` | **Yes** | OpenAI API key for transcription + LLM |
+| `CORS_ORIGINS` | **Yes** | Your frontend URL (e.g. `http://yourdomain.com`) |
+| `SONIOX_API_KEY` | No | Soniox API key for dual-ASR mode |
+| `DEEPSEEK_API_KEY` | No | Alternative LLM provider |
+| `GEMINI_API_KEY` | No | Alternative LLM provider |
+| `CLAUDE_API_KEY` | No | Alternative LLM provider |
 
-# Backend integration tests
-.venv\Scripts\python -m pytest tests/integration -v
+All other variables have sensible defaults in `backend/app/config.py`.
 
-# Frontend tests
-cd frontend
-.venv\Scripts\python -m pytest test_app.py -v
-```
-
-## API Overview
+## API Endpoints
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/health` | GET | Health check |
 | `/api/session/start` | POST | Create new session |
-| `/api/session/{id}/chunk` | POST | Upload audio chunk |
-| `/api/session/{id}/context/images` | POST | Upload slide/image |
+| `/api/session/{id}/chunk` | POST | Upload audio chunk (WebM) |
+| `/api/session/{id}/context/images` | POST | Upload image for context |
 | `/api/session/{id}/transcript` | GET | Get current transcript |
-| `/api/session/{id}/summary` | POST | Generate summary |
-| `/api/session/{id}/summary.md` | GET | Download summary |
-| `/api/session/{id}` | DELETE | End session |
+| `/api/session/{id}/summary` | POST | Generate meeting summary |
+| `/api/session/{id}/summary.md` | GET | Download summary as Markdown |
+| `/api/session/{id}` | DELETE | End and cleanup session |
 
-## Project Structure
+## Architecture
 
 ```
 .
 ├── backend/
 │   ├── app/
-│   │   ├── asr/          # ASR clients (OpenAI, Soniox)
-│   │   ├── audio/        # Audio processing (chunking, overlap)
-│   │   ├── llm/          # LLM providers & tasks
-│   │   ├── session/      # Session management
-│   │   └── main.py       # FastAPI app
+│   │   ├── asr/          # ASR clients (OpenAI Whisper, Soniox)
+│   │   ├── audio/        # Audio chunking and overlap handling
+│   │   ├── llm/          # LLM tasks: reconstruct, translate, summarize
+│   │   ├── session/      # Session state management
+│   │   └── main.py       # FastAPI application
+│   ├── pyproject.toml
 │   └── tests/
 ├── frontend/
-│   ├── app.py            # Streamlit application
-│   └── test_app.py       # Streamlit tests
-├── prompts/              # LLM prompt templates
-├── test_data/            # Korean audio/text test samples
-└── docker-compose.yml
+│   ├── src/
+│   │   ├── App.tsx       # React application (recording, transcript, photos)
+│   │   ├── api.ts        # Backend API client
+│   │   └── recorder.ts   # MediaRecorder audio chunking
+│   ├── index.html
+│   └── package.json
+├── prompts/              # LLM prompt templates (Markdown)
+├── Dockerfile            # Backend container
+├── docker-compose.yml    # Full stack orchestration
+└── .env.example          # Environment template
 ```
+
+## Tech Stack
+
+- **Backend**: Python 3.12, FastAPI, Pydantic Settings
+- **Frontend**: React 18, TypeScript, Vite
+- **ASR**: OpenAI Whisper API, optional Soniox
+- **LLM**: OpenAI GPT-5.4 series (configurable per task)
+- **Audio**: ffmpeg (Docker), Web Audio API (browser)
+- **Deployment**: Docker Compose, nginx reverse proxy
+
+## Development (Without Docker)
+
+### Backend
+
+```bash
+cd backend
+pip install -e ".[test]"
+uvicorn app.main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+## VPS Deployment
+
+See `DEPLOY.md` for detailed VPS deployment instructions including:
+- CORS configuration for your domain
+- Firewall setup
+- Updating after code changes
 
 ## License
 
-MIT
+MIT License — see [LICENSE](LICENSE)
+
