@@ -23,16 +23,32 @@ async def transcribe_with_soniox(
     Transcribe a WAV file using Soniox async REST API.
     Returns dict with 'text', 'tokens' (with speaker, start, end), and 'speakers'.
     """
+    logger.info("Soniox ASR starting for %s", audio_path.name)
+    
+    if not api_key:
+        logger.error("Soniox API key is empty!")
+        raise ValueError("Soniox API key is not configured")
+    
+    logger.debug("Soniox API key present: %s...", api_key[:10] if len(api_key) > 10 else "(short)")
+    
     async with httpx.AsyncClient(timeout=30.0) as client:
+        logger.info("Uploading file to Soniox...")
         file_id = await _upload_file(client, audio_path, api_key)
+        logger.info("Soniox file uploaded, id=%s", file_id)
+        
+        logger.info("Creating transcription job...")
         transcription_id = await _create_transcription(client, file_id, api_key, model)
+        logger.info("Soniox transcription job created, id=%s", transcription_id)
+        
+        logger.info("Polling for transcription completion...")
         result = await _poll_until_done(client, transcription_id, api_key)
+        logger.info("Soniox transcription completed")
 
     tokens = result.get("tokens", [])
     text = _tokens_to_text(tokens)
 
-    logger.debug(
-        "Soniox ASR: model=%s, text_len=%d, tokens=%d",
+    logger.info(
+        "Soniox ASR SUCCESS: model=%s, text_len=%d, tokens=%d",
         model,
         len(text),
         len(tokens),

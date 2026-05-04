@@ -18,6 +18,7 @@ import sys
 import json
 import subprocess
 import tempfile
+import shutil
 import time
 from pathlib import Path
 from urllib.parse import urljoin
@@ -38,12 +39,28 @@ KOREAN_TEST_VIDEOS = [
 ]
 
 
-def create_session(language="es", prompt="Test session with Korean audio"):
+def login(username: str, password: str) -> str:
+    """Login to get auth token"""
+    url = f"{BASE_URL}/api/auth/login"
+    payload = {
+        "username": username,
+        "password": password
+    }
+    
+    resp = requests.post(url, json=payload)
+    resp.raise_for_status()
+    data = resp.json()
+    token = data["token"]
+    print(f"✅ Logged in as: {data.get('username', 'unknown')}")
+    return token
+
+
+def create_session(token: str, language="es", prompt="Test session with Korean audio"):
     """Create a new session via API"""
     url = f"{BASE_URL}/api/session/start"
     headers = {}
-    if TOKEN and TOKEN != "disabled":
-        headers["Authorization"] = f"Bearer {TOKEN}"
+    if token and token != "disabled":
+        headers["Authorization"] = f"Bearer {token}"
     
     payload = {
         "target_language": language,
@@ -204,9 +221,9 @@ def split_audio(audio_path, output_dir, chunk_seconds=15):
             end_ms = min(start_ms + chunk_length_ms, len(audio))
             chunk = audio[start_ms:end_ms]
             
-            # Export as webm/opus
-            chunk_path = chunk_dir / f"chunk_{i:03d}.webm"
-            chunk.export(str(chunk_path), format="webm", codec="opus")
+            # Export as WAV (simplest format, no encoding issues)
+            chunk_path = chunk_dir / f"chunk_{i:03d}.wav"
+            chunk.export(str(chunk_path), format="wav")
             chunks.append(chunk_path)
             
         print(f"✅ Created {len(chunks)} chunks")
@@ -217,12 +234,12 @@ def split_audio(audio_path, output_dir, chunk_seconds=15):
         raise
 
 
-def upload_chunk(session_id, chunk_path, chunk_index, start_time, end_time):
+def upload_chunk(token: str, session_id, chunk_path, chunk_index, start_time, end_time):
     """Upload a single chunk to the API"""
     url = f"{BASE_URL}/api/session/{session_id}/chunk"
     headers = {}
-    if TOKEN and TOKEN != "disabled":
-        headers["Authorization"] = f"Bearer {TOKEN}"
+    if token and token != "disabled":
+        headers["Authorization"] = f"Bearer {token}"
     
     files = {
         "audio": (f"chunk_{chunk_index}.webm", open(chunk_path, "rb"), "audio/webm")
@@ -240,7 +257,7 @@ def upload_chunk(session_id, chunk_path, chunk_index, start_time, end_time):
     return resp.json()
 
 
-def process_chunks(session_id, chunks):
+def process_chunks(token: str, session_id, chunks):
     """Upload all chunks and show results"""
     print(f"\n📤 Uploading {len(chunks)} chunks to API...\n")
     
@@ -252,7 +269,7 @@ def process_chunks(session_id, chunks):
         print(f"Chunk {i}: {chunk_path.name}...", end=" ")
         
         try:
-            result = upload_chunk(session_id, chunk_path, i, start_time, end_time)
+            result = upload_chunk(token, session_id, chunk_path, i, start_time, end_time)
             
             # Check which ASR models responded
             segments = result.get("segments", [])
@@ -278,12 +295,12 @@ def process_chunks(session_id, chunks):
     return results
 
 
-def fetch_and_display_transcript(session_id):
+def fetch_and_display_transcript(token: str, session_id):
     """Fetch the complete transcript from the API and display it"""
     url = f"{BASE_URL}/api/session/{session_id}/transcript"
     headers = {}
-    if TOKEN and TOKEN != "disabled":
-        headers["Authorization"] = f"Bearer {TOKEN}"
+    if token and token != "disabled":
+        headers["Authorization"] = f"Bearer {token}"
     
     print(f"\n{'='*70}")
     print(f"📄 TRANSCRIPT FOR SESSION: {session_id}")
@@ -386,38 +403,54 @@ def main():
     print(f"Source: {'Local file: ' + local_audio_path if source_type == 'local' else 'YouTube: ' + youtube_url}")
     print(f"Auth: {'enabled' if TOKEN and TOKEN != 'disabled' else 'disabled'}")
     
-    # Create temp directory
-    with tempfile.TemporaryDirectory() as tmpdir:
-        try:
-            # Step 1: Create session
-            session_id = create_session()
-            
-            # Step 2: Get audio (download or use local)
-            if source_type == 'youtube':
-                audio_path = download_youtube_audio(youtube_url, tmpdir)
-            else:
-                audio_path = local_audio_path
-                print(f"\n📁 Using local audio file: {audio_path}")
-            
-            # Step 3: Split into chunks
-            chunks = split_audio(audio_path, tmpdir, chunk_seconds=15)
-            
-            # Step 4: Upload and process
-            results = process_chunks(session_id, chunks)
-            
-            # Step 5: Print summary
-            print_summary(session_id, results)
-            
-            # Step 6: Fetch and display the transcript
-            fetch_and_display_transcript(session_id)
-            
-            print(f"\n🔗 View transcript at: {BASE_URL}/api/session/{session_id}/transcript")
-            
-        except Exception as e:
-            print(f"\n❌ Test failed: {e}")
-            import traceback
-            traceback.print_exc()
-            sys.exit(1)
+    # Get credentials from env or prompt
+    username = os.getenv("API_USERNAME", "ramses")
+    password = os.getenv("API_PASSWORD", "mellamoRalph12")
+    
+    # Step 0: Login to get token
+    try:
+        token = login(username, password)
+    except Exception as e:
+        print(f"❌ Login failed: {e}")
+        print("   Set API_USERNAME and API_PASSWORD env vars, or edit the script")
+        sys.exit(1)
+    
+    # Create temp directory (manual cleanup to avoid Windows permission issues)
+    import atexit
+    tmpdir = tempfile.mkdtemp(prefix="korean_test_")
+    atexit.register(lambda: shutil.rmtree(tmpdir, ignore_errors=True))
+    
+    try:
+        # Step 1: Create session
+        session_id = create_session(token)
+        
+        # Step 2: Get audio (download or use local)
+        if source_type == 'youtube':
+            audio_path = download_youtube_audio(youtube_url, tmpdir)
+        else:
+            audio_path = local_audio_path
+            print(f"\n📁 Using local audio file: {audio_path}")
+        
+        # Step 3: Split into chunks
+        chunks = split_audio(audio_path, tmpdir, chunk_seconds=15)
+        
+        # Step 4: Upload and process
+        results = process_chunks(token, session_id, chunks)
+        
+        # Step 5: Print summary
+        print_summary(session_id, results)
+        
+        # Step 6: Fetch and display the transcript
+        fetch_and_display_transcript(token, session_id)
+        
+        print(f"\n🔗 View transcript at: {BASE_URL}/api/session/{session_id}/transcript")
+        print(f"   Temp files location: {tmpdir}")
+        
+    except Exception as e:
+        print(f"\n❌ Test failed: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == "__main__":
