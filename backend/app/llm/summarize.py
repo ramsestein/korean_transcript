@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+import json
+import logging
+from pathlib import Path
+
+from app.config import Settings
+from app.llm.client import get_provider
+from app.schemas import ImageContext, Segment, TargetLanguage
+
+logger = logging.getLogger(__name__)
+
+_CANDIDATE_PATHS = [
+    # Docker layout: /app/app/llm/ -> /app/prompts/
+    Path(__file__).parent.parent.parent / "prompts" / "operational_summary.md",
+    # Local dev layout
+    Path(__file__).parent.parent.parent.parent / "prompts" / "operational_summary.md",
+]
+
+
+def _load_prompt() -> str:
+    for p in _CANDIDATE_PATHS:
+        if p.exists():
+            return p.read_text(encoding="utf-8")
+    logger.error("Summary prompt not found in: %s", _CANDIDATE_PATHS)
+    return ""
+
+
+async def generate_summary(
+    segments: list[Segment],
+    target_language: TargetLanguage,
+    meeting_prompt: str,
+    image_contexts: list[ImageContext],
+    settings: Settings,
+) -> str:
+    """
+    Generate an operational summary in Markdown.
+    Returns the raw Markdown string.
+    """
+    provider, model = get_provider("summary", settings)
+    system_prompt = _load_prompt()
+
+    reconstructed_ko_full = "\n\n".join(
+        f"[{s.time_start:.0f}s-{s.time_end:.0f}s] {s.reconstructed_ko}"
+        for s in segments
+        if s.reconstructed_ko
+    )
+    translated_full = "\n\n".join(
+        f"[{s.time_start:.0f}s-{s.time_end:.0f}s] {s.translated_text}"
+        for s in segments
+        if s.translated_text
+    )
+
+    all_uncertainties = []
+    for s in segments:
+        all_uncertainties.extend(s.uncertainties)
+
+    image_ctx_list = [
+        {
+            "visible_text": ic.visible_text,
+            "entities": ic.entities,
+            "technical_terms": ic.technical_terms,
+            "agenda_items": ic.agenda_items,
+        }
+        for ic in image_contexts
+    ]
+
+    user_payload = {
+        "meeting_prompt": meeting_prompt,
+        "reconstructed_ko_full": reconstructed_ko_full,
+        "translated_full": translated_full,
+        "image_contexts": image_ctx_list,
+        "segment_uncertainties": all_uncertainties,
+        "target_language": target_language,
+    }
+
+    result = await provider.complete_json(
+        model=model,
+        system=system_prompt,
+        user=json.dumps(user_payload, ensure_ascii=False),
+        max_tokens=4096,
+    )
+
+    markdown = result.get("markdown") or result.get("summary") or result.get("text", "")
+    if not markdown:
+        markdown = json.dumps(result, ensure_ascii=False, indent=2)
+
+    return str(markdown)

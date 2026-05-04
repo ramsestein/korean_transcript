@@ -1,0 +1,22 @@
+# Python
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.pytest_cache
+**/.mypy_cache
+**/*.egg-info
+backend/.venv
+backend/venv
+
+# Node
+frontend/node_modules
+frontend/dist
+
+# Data & secrets
+data/
+.env
+
+# Git & IDE
+.git
+.gitignore
+**/.DS_Store

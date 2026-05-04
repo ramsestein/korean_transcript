@@ -1,0 +1,125 @@
+{
+  "sample_phrases": [
+    {
+      "id": "ko-001",
+      "korean": "안녕하세요. 회의를 시작하겠습니다.",
+      "translation_es": "Hola. Comenzaremos la reunión.",
+      "translation_en": "Hello. We will start the meeting.",
+      "translation_zh": "你好。我们将开始会议。",
+      "context": "meeting_start",
+      "duration_seconds": 3.5,
+      "difficulty": "easy"
+    },
+    {
+      "id": "ko-002",
+      "korean": "이 프로젝트의 목표는 AI 기술을 활용하여 의료 데이터를 분석하는 것입니다.",
+      "translation_es": "El objetivo de este proyecto es analizar datos médicos utilizando tecnología de IA.",
+      "translation_en": "The goal of this project is to analyze medical data using AI technology.",
+      "translation_zh": "这个项目的目标是利用AI技术分析医疗数据。",
+      "context": "project_presentation",
+      "duration_seconds": 6.2,
+      "difficulty": "medium",
+      "technical_terms": ["AI", "의료 데이터"]
+    },
+    {
+      "id": "ko-003",
+      "korean": "BERT 모델을 파인튜닝해서 한국어 NLP 성능을 개선했습니다.",
+      "translation_es": "Mejoramos el rendimiento de NLP en coreano haciendo fine-tuning del modelo BERT.",
+      "translation_en": "We improved Korean NLP performance by fine-tuning the BERT model.",
+      "translation_zh": "我们通过微调BERT模型提高了韩语NLP性能。",
+      "context": "technical_presentation",
+      "duration_seconds": 5.0,
+      "difficulty": "hard",
+      "technical_terms": ["BERT", "NLP", "파인튜닝"]
+    },
+    {
+      "id": "ko-004",
+      "korean": "내일까지 보고서를 제출해 주세요. 마감 기한을 지켜야 합니다.",
+      "translation_es": "Por favor, entreguen el informe antes de mañana. Debemos cumplir con el plazo.",
+      "translation_en": "Please submit the report by tomorrow. We must meet the deadline.",
+      "translation_zh": "请在明天之前提交报告。我们必须遵守截止日期。",
+      "context": "deadline_reminder",
+      "duration_seconds": 4.8,
+      "difficulty": "easy"
+    },
+    {
+      "id": "ko-005",
+      "korean": "이 데이터셋은 MIMIC-IV에서 가져왔으며 GPT-4로 전처리했습니다.",
+      "translation_es": "Este dataset proviene de MIMIC-IV y fue preprocesado con GPT-4.",
+      "translation_en": "This dataset comes from MIMIC-IV and was preprocessed with GPT-4.",
+      "translation_zh": "这个数据集来自MIMIC-IV，并使用GPT-4进行了预处理。",
+      "context": "data_presentation",
+      "duration_seconds": 5.5,
+      "difficulty": "hard",
+      "technical_terms": ["MIMIC-IV", "GPT-4", "데이터셋"]
+    },
+    {
+      "id": "ko-006",
+      "korean": "질문 있으신가요? 다음 슬라이드로 넘어가겠습니다.",
+      "translation_es": "¿Alguna pregunta? Pasaré a la siguiente diapositiva.",
+      "translation_en": "Any questions? I will move to the next slide.",
+      "translation_zh": "有问题吗？我将转到下一张幻灯片。",
+      "context": "presentation_flow",
+      "duration_seconds": 3.2,
+      "difficulty": "easy"
+    },
+    {
+      "id": "ko-007",
+      "korean": "이 결과는 정확도 95%를 달성했으며 F1 스코어는 0.92입니다.",
+      "translation_es": "Este resultado alcanzó una precisión del 95% y un F1 score de 0.92.",
+      "translation_en": "This result achieved 95% accuracy and an F1 score of 0.92.",
+      "translation_zh": "这个结果达到了95%的准确率和0.92的F1分数。",
+      "context": "results_presentation",
+      "duration_seconds": 5.0,
+      "difficulty": "medium",
+      "technical_terms": ["정확도", "F1 스코어"]
+    }
+  ],
+  "audio_sources": {
+    "note": "Para pruebas en vivo, se recomienda usar:",
+    "recommendations": [
+      {
+        "source": "Mozilla Common Voice",
+        "url": "https://commonvoice.mozilla.org/",
+        "description": "Dataset de voz abierto con muestras coreanas",
+        "license": "CC0"
+      },
+      {
+        "source": "AI Hub Korean Speech Data",
+        "url": "https://aihub.or.kr/",
+        "description": "Datos de voz coreana del gobierno coreano",
+        "license": "Uso investigación"
+      },
+      {
+        "source": "Google TTS",
+        "description": "Generar audio de prueba con voz coreana",
+        "note": "Usar gTTS o similar para generar WAV/MP3"
+      },
+      {
+        "source": "Crear audio local",
+        "command": "ffmpeg -f lavfi -i 'sine=frequency=1000:duration=15' -ar 16000 -ac 1 test_korean.wav",
+        "description": "Generar dummy audio WAV 16kHz mono para pruebas"
+      }
+    ]
+  },
+  "test_scenarios": [
+    {
+      "name": "Basic Meeting Start",
+      "phrases": ["ko-001", "ko-006"],
+      "target_language": "es",
+      "expected_duration": 15
+    },
+    {
+      "name": "Technical Presentation",
+      "phrases": ["ko-002", "ko-003", "ko-005"],
+      "target_language": "en",
+      "expected_duration": 20
+    },
+    {
+      "name": "Full Meeting Simulation",
+      "phrases": ["ko-001", "ko-002", "ko-006", "ko-007", "ko-004"],
+      "target_language": "zh",
+      "expected_duration": 30
+    }
+  ]
+}
