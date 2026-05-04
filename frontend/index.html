@@ -9,8 +9,19 @@
     <link rel="apple-touch-icon" href="/icon-192x192.png" />
     <title>Korean Meeting Interpreter</title>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="background: #0f0f1a; color: #e8e8f0; font-family: system-ui, sans-serif; margin: 0;">
+    <div id="root">
+      <!-- Fallback: shows if React fails to mount -->
+      <div id="fallback" style="padding: 40px; text-align: center;">
+        <h1>Korean Meeting Interpreter</h1>
+        <p id="fallback-msg">Loading application...</p>
+      </div>
+    </div>
+    <script>
+      // Immediate debug - runs before React
+      console.log('index.html: page loaded, waiting for React...');
+      document.getElementById('fallback-msg').textContent = 'JavaScript is running, loading React...';
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       // Register service worker for PWA
