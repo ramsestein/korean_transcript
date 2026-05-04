@@ -441,26 +441,43 @@ class PatchedRecorder {
     // Stop/restart approach: every chunkSeconds we stop the recorder,
     // which fires dataavailable with a COMPLETE valid audio blob (full header),
     // then immediately start a new recorder on the same stream.
+    let expectedNextChunk = sessionStart;
     const cycle = () => {
       if (stopped) return;
+      const now = Date.now();
+      const drift = now - expectedNextChunk;
+      console.log(`[Recorder] Starting chunk ${chunkIndex} at ${(now-sessionStart)/1000}s, drift=${drift}ms`);
+      
       const mr = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       const idx = chunkIndex++;
-      const chunkStart = (Date.now() - sessionStart) / 1000;
+      const chunkStartTime = now;
+      expectedNextChunk = now + chunkSeconds * 1000;
 
       mr.addEventListener('dataavailable', (e: BlobEvent) => {
         if (e.data.size > 0) {
           const chunkEnd = (Date.now() - sessionStart) / 1000;
-          upload(e.data, idx, chunkStart, chunkEnd);
+          const duration = (Date.now() - chunkStartTime) / 1000;
+          console.log(`[Recorder] Chunk ${idx} ended, duration=${duration}s, size=${e.data.size}`);
+          upload(e.data, idx, (chunkStartTime - sessionStart) / 1000, chunkEnd);
         }
       });
 
       mr.addEventListener('stop', () => {
-        if (!stopped) cycle(); // start next chunk immediately
+        if (!stopped) {
+          console.log(`[Recorder] Chunk ${idx} stopped, starting next`);
+          cycle();
+        }
       });
 
       mr.start();
+      console.log(`[Recorder] MediaRecorder started, scheduling stop in ${chunkSeconds}s`);
       setTimeout(() => {
-        if (mr.state === 'recording') mr.stop();
+        if (mr.state === 'recording') {
+          console.log(`[Recorder] Calling stop() for chunk ${idx}`);
+          mr.stop();
+        } else {
+          console.log(`[Recorder] MediaRecorder already stopped for chunk ${idx}, state=${mr.state}`);
+        }
       }, chunkSeconds * 1000);
 
       (this as unknown as { _mr: MediaRecorder })._mr = mr;
