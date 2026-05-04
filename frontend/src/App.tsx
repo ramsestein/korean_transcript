@@ -146,6 +146,7 @@ export default function App() {
   }, [sessionId, token]);
 
   const handleLoginSuccess = useCallback((newToken: string, newUsername: string) => {
+    console.log('App: login success', newUsername);
     setToken(newToken);
     setUsername(newUsername);
     setAuthToken(newToken);

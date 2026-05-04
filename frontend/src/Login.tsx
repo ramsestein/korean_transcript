@@ -14,18 +14,25 @@ export function Login({ onLogin }: Props) {
 
   // Check auth status once on mount
   useEffect(() => {
+    console.log('Login: checking auth status...');
     fetch('/api/auth/status')
-      .then(r => r.json())
+      .then(r => {
+        console.log('Login: auth status response', r.status);
+        return r.json();
+      })
       .then(data => {
+        console.log('Login: auth data', data);
         setAuthEnabled(data.auth_enabled);
         setAvailableUsers(data.users_configured || []);
         setChecking(false);
         // Only auto-login if auth is disabled
         if (!data.auth_enabled) {
+          console.log('Login: auth disabled, auto-logging in');
           onLogin('disabled', 'anonymous');
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('Login: error fetching auth status', err);
         setChecking(false);
         setError('Cannot connect to server');
       });
