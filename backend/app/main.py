@@ -87,9 +87,11 @@ async def auth_status(settings: Annotated[Settings, Depends(get_settings)]) -> d
 
 
 @app.post("/api/auth/login")
-async def login(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
+async def login(request: Request) -> JSONResponse:
     """Login with username/password and receive a token."""
     from app.auth import authenticate_user, get_token_username
+    
+    settings = get_settings()
     
     # If auth is disabled, return a dummy token
     if not settings.auth_enabled:
