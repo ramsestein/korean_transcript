@@ -8,11 +8,13 @@ export class ChunkRecorder {
   private stream: MediaStream | null = null;
   private chunkIndex = 0;
   private sessionId = '';
+  private token = '';
   private sessionStart = 0;
   private onUpdate: OnChunkUpdate = () => {};
   private chunkSeconds = 15;
 
-  async start(sessionId: string, chunkSeconds: number, onUpdate: OnChunkUpdate): Promise<void> {
+  async start(sessionId: string, token: string, chunkSeconds: number, onUpdate: OnChunkUpdate): Promise<void> {
+    this.token = token;
     this.sessionId = sessionId;
     this.sessionStart = Date.now();
     this.chunkIndex = 0;
@@ -57,13 +59,13 @@ export class ChunkRecorder {
   private async processChunk(idx: number, blob: Blob, start: number, end: number): Promise<void> {
     this.onUpdate({ index: idx, status: 'uploading' });
     try {
-      await uploadChunk(this.sessionId, idx, blob, start, end);
+      await uploadChunk(this.token, this.sessionId, idx, blob, start, end);
       this.onUpdate({ index: idx, status: 'done' });
     } catch (err) {
       // retry once after 2s
       try {
         await new Promise(r => setTimeout(r, 2000));
-        await uploadChunk(this.sessionId, idx, blob, start, end);
+        await uploadChunk(this.token, this.sessionId, idx, blob, start, end);
         this.onUpdate({ index: idx, status: 'done' });
       } catch (err2) {
         this.onUpdate({ index: idx, status: 'error', error: String(err2) });

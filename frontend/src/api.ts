@@ -1,9 +1,17 @@
 import type { Language, ChunkResponse } from './types';
 
-export async function startSession(language: Language, prompt: string, chunkSeconds = 15): Promise<string> {
+function getHeaders(token: string): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (token && token !== 'disabled') {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+export async function startSession(token: string, language: Language, prompt: string, chunkSeconds = 15): Promise<string> {
   const res = await fetch('/api/session/start', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { ...getHeaders(token), 'Content-Type': 'application/json' },
     body: JSON.stringify({
       target_language: language,
       meeting_prompt: prompt,
@@ -19,6 +27,7 @@ export async function startSession(language: Language, prompt: string, chunkSeco
 }
 
 export async function uploadChunk(
+  token: string,
   sessionId: string,
   index: number,
   audio: Blob,
@@ -34,6 +43,7 @@ export async function uploadChunk(
 
   const res = await fetch(`/api/session/${sessionId}/chunk`, {
     method: 'POST',
+    headers: getHeaders(token),
     body: form,
   });
   if (!res.ok) {
@@ -44,6 +54,7 @@ export async function uploadChunk(
 }
 
 export async function uploadImages(
+  token: string,
   sessionId: string,
   files: File[]
 ): Promise<{ image_ids: string[]; extracted: object[] }> {
@@ -51,19 +62,26 @@ export async function uploadImages(
   files.forEach(f => form.append('images', f));
   const res = await fetch(`/api/session/${sessionId}/context/images`, {
     method: 'POST',
+    headers: getHeaders(token),
     body: form,
   });
   if (!res.ok) throw new Error(`Image upload failed: ${res.status}`);
   return res.json();
 }
 
-export async function generateSummary(sessionId: string): Promise<string> {
-  const res = await fetch(`/api/session/${sessionId}/summary`, { method: 'POST' });
+export async function generateSummary(token: string, sessionId: string): Promise<string> {
+  const res = await fetch(`/api/session/${sessionId}/summary`, {
+    method: 'POST',
+    headers: getHeaders(token),
+  });
   if (!res.ok) throw new Error(`Summary generation failed: ${res.status}`);
   const data = await res.json();
   return data.download_url as string;
 }
 
-export async function deleteSession(sessionId: string): Promise<void> {
-  await fetch(`/api/session/${sessionId}`, { method: 'DELETE' });
+export async function deleteSession(token: string, sessionId: string): Promise<void> {
+  await fetch(`/api/session/${sessionId}`, {
+    method: 'DELETE',
+    headers: getHeaders(token),
+  });
 }

@@ -76,10 +76,52 @@ async def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/api/auth/status")
+async def auth_status(settings: Annotated[Settings, Depends(get_settings)]) -> dict:
+    """Check if authentication is enabled."""
+    return {"auth_enabled": settings.auth_enabled, "admin_configured": bool(settings.admin_password)}
+
+
+@app.post("/api/auth/login")
+async def login(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
+    """Login with password and receive a token."""
+    from app.auth import authenticate_user, verify_token
+    
+    # If auth is disabled, return a dummy token
+    if not settings.auth_enabled:
+        return JSONResponse({"token": "disabled", "message": "Authentication is disabled"})
+    
+    if not settings.admin_password:
+        raise HTTPException(status_code=500, detail="Admin password not configured")
+    
+    body = await request.json()
+    password = body.get("password", "")
+    
+    token = authenticate_user(password)
+    if not token:
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    return JSONResponse({"token": token, "message": "Login successful"})
+
+
+@app.post("/api/auth/logout")
+async def logout(request: Request) -> JSONResponse:
+    """Logout and invalidate the token."""
+    from app.auth import revoke_token
+    
+    auth_header = request.headers.get("authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+        revoke_token(token)
+    
+    return JSONResponse({"message": "Logout successful"})
+
+
 @app.post("/api/session/start", response_model=SessionStartResponse)
 async def session_start(
     request: SessionStartRequest,
     settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
 ) -> SessionStartResponse:
     session_id = await create_session(request, settings)
     logger.info("Created session %s (lang=%s)", session_id, request.target_language)
@@ -90,6 +132,7 @@ async def session_start(
 async def upload_chunk(
     session_id: str,
     settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
     audio: UploadFile = File(...),
     chunk_index: int = Form(...),
     local_start_time: float = Form(...),
@@ -337,6 +380,7 @@ async def _retroactive_correction(
 async def upload_images(
     session_id: str,
     settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
     images: list[UploadFile] = File(...),
 ) -> ImageUploadResponse:
     manifest = await get_session_manifest(session_id, settings)
@@ -398,6 +442,7 @@ async def upload_images(
 async def get_transcript(
     session_id: str,
     settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
 ) -> TranscriptResponse:
     manifest = await get_session_manifest(session_id, settings)
     if manifest is None:
@@ -416,6 +461,7 @@ async def get_transcript(
 async def generate_summary_endpoint(
     session_id: str,
     settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
 ) -> SummaryResponse:
     manifest = await get_session_manifest(session_id, settings)
     if manifest is None:
@@ -440,6 +486,7 @@ async def generate_summary_endpoint(
 async def download_summary(
     session_id: str,
     settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
 ) -> FileResponse:
     summary_path = session_dir(settings.data_dir, session_id) / "summary.md"
     if not summary_path.exists():
@@ -456,6 +503,7 @@ async def download_summary(
 async def end_session(
     session_id: str,
     settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
 ) -> dict:
     deleted = await delete_session(session_id, settings)
     if not deleted:

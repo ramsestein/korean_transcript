@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     # Eval
     max_prompt_rewrite_attempts: int = 3
 
+    # Auth
+    auth_enabled: bool = False
+    admin_password: str = ""  # Set this to enable login
+    auth_pepper: str = "change-this-in-production"
+
     # Server
     backend_port: int = 8000
     frontend_port: int = 5173

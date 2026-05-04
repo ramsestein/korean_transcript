@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChunkRecorder } from './recorder';
 import { startSession, generateSummary, deleteSession, uploadImages, uploadChunk } from './api';
+import { Login } from './Login';
 import type { Language, ChunkInfo, Segment, ChunkResponse } from './types';
 import './styles.css';
 
@@ -23,6 +24,7 @@ function fmt(s: number): string {
 }
 
 export default function App() {
+  const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
   const [phase, setPhase] = useState<Phase>('setup');
   const [language, setLanguage] = useState<Language | null>(null);
   const [meetingPrompt, setMeetingPrompt] = useState('');
@@ -64,16 +66,22 @@ export default function App() {
     void origUpload;
   }, [handleNewSegments]);
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem('auth_token');
+    setToken(null);
+    window.location.reload();
+  }, []);
+
   const handleStart = useCallback(async () => {
-    if (!language) return;
+    if (!language || !token) return;
     setError(null);
     try {
-      const sid = await startSession(language, meetingPrompt, CHUNK_SECONDS);
+      const sid = await startSession(token, language, meetingPrompt, CHUNK_SECONDS);
       setSessionId(sid);
 
       // Upload images if any
       if (imageFiles.length > 0) {
-        await uploadImages(sid, imageFiles).catch(e => console.warn('Image upload:', e));
+        await uploadImages(token, sid, imageFiles).catch(e => console.warn('Image upload:', e));
       }
 
       const recorder = new ChunkRecorder();
@@ -90,9 +98,9 @@ export default function App() {
       void patchedUpload;
 
       // We patch the uploadChunk inside recorder by subclassing
-      const patchedRecorder = new PatchedRecorder(sid, handleNewSegments);
+      const patchedRecorder = new PatchedRecorder(sid, token, handleNewSegments);
       recorderRef.current = patchedRecorder;
-      await patchedRecorder.start(sid, CHUNK_SECONDS, onChunkUpdate);
+      await patchedRecorder.startPatched(sid, token, CHUNK_SECONDS, onChunkUpdate);
 
       setPhase('recording');
       setElapsed(0);
@@ -100,42 +108,48 @@ export default function App() {
     } catch (e) {
       setError(String(e));
     }
-  }, [language, meetingPrompt, imageFiles, onChunkUpdate, handleNewSegments]);
+  }, [language, meetingPrompt, imageFiles, token, onChunkUpdate, handleNewSegments]);
 
-  const handleStop = useCallback(() => {
+  const handleStop = useCallback(async () => {
     recorderRef.current?.stop();
     if (timerRef.current) clearInterval(timerRef.current);
     setPhase('done');
   }, []);
 
   const handleSummary = useCallback(async () => {
-    if (!sessionId) return;
+    if (!sessionId || !token) return;
     setSummaryLoading(true);
     try {
-      const url = await generateSummary(sessionId);
+      const url = await generateSummary(token, sessionId);
       setSummaryUrl(url);
     } catch (e) {
       setError(String(e));
     } finally {
       setSummaryLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId, token]);
 
   const handleLivePhoto = useCallback(async (file: File) => {
-    if (!sessionId) return;
+    if (!sessionId || !token) return;
     const id = `${Date.now()}-${file.name}`;
     const preview = URL.createObjectURL(file);
     setLivePhotos(prev => [...prev, { id, preview, status: 'uploading' }]);
     try {
-      await uploadImages(sessionId, [file]);
+      await uploadImages(token, sessionId, [file]);
       setLivePhotos(prev => prev.map(p => p.id === id ? { ...p, status: 'done' } : p));
     } catch (e) {
       setLivePhotos(prev => prev.map(p => p.id === id ? { ...p, status: 'error', error: String(e) } : p));
     }
-  }, [sessionId]);
+  }, [sessionId, token]);
+
+  const handleLoginSuccess = useCallback((newToken: string) => {
+    setToken(newToken);
+    localStorage.setItem('auth_token', newToken);
+  }, []);
 
   const handleEnd = useCallback(async () => {
-    if (sessionId) await deleteSession(sessionId).catch(() => {});
+    if (!sessionId || !token) return;
+    await deleteSession(token, sessionId);
     setPhase('setup');
     setSessionId(null);
     setChunks([]);
@@ -149,12 +163,22 @@ export default function App() {
     setLivePhotos([]);
     livePhotos.forEach(p => URL.revokeObjectURL(p.preview));
     segmentMapRef.current.clear();
-  }, [sessionId, livePhotos]);
+  }, [sessionId, livePhotos, token]);
+
+  // Show login if no token
+  if (!token) {
+    return <Login onLogin={handleLoginSuccess} />;
+  }
 
   return (
     <div className="app">
-      <h1>🇰🇷 Korean Meeting Interpreter</h1>
-      <p className="subtitle">Real-time Korean transcription &amp; translation</p>
+      <div className="header-row">
+        <div>
+          <h1>🇰🇷 Korean Meeting Interpreter</h1>
+          <p className="subtitle">Real-time Korean transcription &amp; translation</p>
+        </div>
+        <button className="btn-secondary" onClick={handleLogout}>Logout</button>
+      </div>
 
       {error && (
         <div className="error-banner">⚠ {error} <button onClick={() => setError(null)} style={{ float: 'right', background: 'none', color: 'inherit', padding: '0 4px', minHeight: 'auto' }}>✕</button></div>
@@ -363,16 +387,19 @@ function PhotoCapture({ onPhoto }: { onPhoto: (f: File) => void }) {
 
 class PatchedRecorder extends ChunkRecorder {
   private sid: string;
+  private token: string;
   private onSegs: (segs: Segment[]) => void;
 
-  constructor(sid: string, onSegs: (segs: Segment[]) => void) {
+  constructor(sid: string, token: string, onSegs: (segs: Segment[]) => void) {
     super();
     this.sid = sid;
+    this.token = token;
     this.onSegs = onSegs;
   }
 
   // Override processChunk behavior by intercepting via custom upload
-  async startPatched(sessionId: string, chunkSeconds: number, onUpdate: (c: ChunkInfo) => void): Promise<void> {
+  async startPatched(sessionId: string, token: string, chunkSeconds: number, onUpdate: (c: ChunkInfo) => void): Promise<void> {
+    this.token = token;
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1, sampleRate: 16000 },
     });
@@ -387,7 +414,7 @@ class PatchedRecorder extends ChunkRecorder {
     const upload = (blob: Blob, idx: number, start: number, end: number) => {
       onUpdate({ index: idx, status: 'uploading' });
       const attempt = (retries: number) => {
-        uploadChunk(sessionId, idx, blob, start, end)
+        uploadChunk(token, sessionId, idx, blob, start, end)
           .then((resp: ChunkResponse) => {
             onUpdate({ index: idx, status: 'done' });
             if (resp.segments?.length) this.onSegs(resp.segments);
