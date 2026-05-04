@@ -102,9 +102,12 @@ async def login(request: Request, settings: Annotated[Settings, Depends(get_sett
     if not username or not password:
         raise HTTPException(status_code=400, detail="Username and password required")
     
-    token = authenticate_user(username, password)
+    # Get client IP for rate limiting
+    client_ip = request.client.host if request.client else "unknown"
+    
+    token, error_message = authenticate_user(username, password, client_ip)
     if not token:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail=error_message)
     
     actual_username = get_token_username(token) or username
     return JSONResponse({"token": token, "username": actual_username, "message": "Login successful"})

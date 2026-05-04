@@ -1,12 +1,27 @@
 // Simple cookie utility for auth token storage
 // Using cookies allows the browser to persist session across restarts
+//
+// SECURITY NOTE: HttpOnly flag can only be set by the server, not JavaScript.
+// For production, the server should set the auth cookie via Set-Cookie header
+// with HttpOnly; Secure; SameSite=Strict flags.
+//
+// Current flags set:
+// - Secure: Only sent over HTTPS (set when window.location.protocol === 'https:')
+// - SameSite=Strict: Prevents CSRF by not sending cookie on cross-site requests
+// - Max-Age: 30 days session persistence
 
 const COOKIE_NAME = 'auth_token';
-const COOKIE_OPTIONS = 'Path=/; SameSite=Strict; Max-Age=2592000'; // 30 days
+
+function getCookieOptions(maxAgeSeconds: number): string {
+  const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+  const secureFlag = isHttps ? '; Secure' : '';
+  return `Path=/; SameSite=Strict${secureFlag}; Max-Age=${maxAgeSeconds}`;
+}
 
 export function setCookie(name: string, value: string, maxAgeDays = 30): void {
   const maxAge = maxAgeDays * 24 * 60 * 60;
-  document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Strict; Max-Age=${maxAge}`;
+  const options = getCookieOptions(maxAge);
+  document.cookie = `${name}=${encodeURIComponent(value)}; ${options}`;
 }
 
 export function getCookie(name: string): string | null {
