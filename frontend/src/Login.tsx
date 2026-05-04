@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 type Props = {
   onLogin: (token: string, username: string) => void;
@@ -11,28 +11,33 @@ export function Login({ onLogin }: Props) {
   const [checking, setChecking] = useState(true);
   const [authEnabled, setAuthEnabled] = useState(true);
   const [availableUsers, setAvailableUsers] = useState<string[]>([]);
+  const [authChecked, setAuthChecked] = useState(false);
 
-  // Check if auth is actually required and get available users
+  // Store onLogin in ref to avoid effect re-running
+  const onLoginRef = useRef(onLogin);
+  onLoginRef.current = onLogin;  // Keep ref updated
+
+  // Check if auth is actually required and get available users - runs once
   useEffect(() => {
-    let mounted = true;
+    if (authChecked) return;
+    
     fetch('/api/auth/status')
       .then(r => r.json())
       .then(data => {
-        if (!mounted) return;
         setAuthEnabled(data.auth_enabled);
         setAvailableUsers(data.users_configured || []);
         if (!data.auth_enabled) {
-          onLogin('disabled', 'anonymous');
+          onLoginRef.current('disabled', 'anonymous');
         }
         setChecking(false);
+        setAuthChecked(true);
       })
       .catch(() => {
-        if (!mounted) return;
         setChecking(false);
         setError('Cannot connect to server');
+        setAuthChecked(true);
       });
-    return () => { mounted = false; };
-  }, [onLogin]);
+  }, [authChecked]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,8 +65,8 @@ export function Login({ onLogin }: Props) {
 
   if (checking) {
     return (
-      <div className="login-container">
-        <div className="login-box">
+      <div className="login-container" style={{ background: '#0f172a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="login-box" style={{ color: 'white', textAlign: 'center' }}>
           <div className="spinner" />
           <p>Checking authentication...</p>
         </div>
@@ -70,10 +75,10 @@ export function Login({ onLogin }: Props) {
   }
 
   return (
-    <div className="login-container">
-      <div className="login-box">
-        <h1>🔒 Korean Meeting Interpreter</h1>
-        <p className="login-subtitle">Authentication Required</p>
+    <div className="login-container" style={{ background: '#0f172a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="login-box" style={{ background: '#1e293b', padding: '32px', borderRadius: '12px', color: 'white', maxWidth: '360px', width: '90%' }}>
+        <h1 style={{ margin: '0 0 8px', fontSize: '1.5rem' }}>🔒 Korean Meeting Interpreter</h1>
+        <p className="login-subtitle" style={{ color: '#94a3b8', marginBottom: '24px' }}>Authentication Required</p>
 
         {availableUsers.length > 0 && (
           <div className="users-hint">
