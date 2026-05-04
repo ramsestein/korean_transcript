@@ -54,7 +54,11 @@ export function Login({ onLogin }: Props) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.detail || 'Login failed');
+        // Handle both string and object error details
+        const errorMsg = typeof data.detail === 'string' 
+          ? data.detail 
+          : data.detail?.msg || JSON.stringify(data.detail) || 'Login failed';
+        setError(errorMsg);
         return;
       }
 
