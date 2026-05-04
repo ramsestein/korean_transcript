@@ -7,7 +7,6 @@ Users are defined via environment variables ending in _USER:
 Security features:
 - Tokens expire after 24 hours
 - Rate limiting on login (5 attempts per 5 minutes per IP)
-- Max 5 active tokens per user
 """
 from __future__ import annotations
 
@@ -26,9 +25,6 @@ from app.config import get_settings
 
 # Token expiration time (24 hours in seconds)
 TOKEN_EXPIRY_SECONDS = 24 * 60 * 60
-
-# Max tokens per user
-MAX_TOKENS_PER_USER = 5
 
 # Rate limiting: {ip: (attempts, first_attempt_timestamp)}
 _login_attempts: dict[str, tuple[int, float]] = {}
@@ -81,22 +77,9 @@ def _cleanup_expired_tokens() -> None:
         del _valid_tokens[token]
 
 
-def _count_user_tokens(username: str) -> int:
-    """Count active tokens for a user."""
+def create_token(username: str) -> str:
+    """Create a new random token associated with a username."""
     _cleanup_expired_tokens()
-    return sum(1 for info in _valid_tokens.values() if info.username == username)
-
-
-def create_token(username: str) -> str | None:
-    """Create a new random token associated with a username.
-    
-    Returns None if user has too many active tokens.
-    """
-    _cleanup_expired_tokens()
-    
-    # Check token limit per user
-    if _count_user_tokens(username) >= MAX_TOKENS_PER_USER:
-        return None
     
     token = secrets.token_urlsafe(32)
     _valid_tokens[token] = TokenInfo(
@@ -222,11 +205,8 @@ def authenticate_user(username: str, password: str, client_ip: str) -> tuple[str
         log_failed_login(username, client_ip)
         return None, "Invalid username or password"
     
-    # Create token (may fail if too many sessions)
+    # Create token
     token = create_token(username_lower)
-    if not token:
-        return None, "Maximum active sessions reached. Please log out from another device."
-    
     return token, ""
 
 
