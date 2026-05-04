@@ -1,10 +1,16 @@
-"""Simple token-based authentication for the meeting interpreter."""
+"""Multi-user token-based authentication for the meeting interpreter.
+
+Users are defined via environment variables ending in _USER:
+  USER1_USER=password1
+  USER2_USER=password2
+"""
 from __future__ import annotations
 
 import hashlib
 import hmac
+import os
+import re
 import secrets
-from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
@@ -12,37 +18,58 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from app.config import get_settings
 
-# Simple in-memory token storage (resets on restart; for VPS this is fine)
-# Format: {token: {"created": datetime, "expires": datetime}}
-_valid_tokens: set[str] = set()
+# Simple in-memory token storage: {token: username}
+_valid_tokens: dict[str, str] = {}
 _bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def get_users_from_env() -> dict[str, str]:
+    """Extract users from environment variables ending in _USER.
+    
+    Returns dict: {lowercase_username: password}
+    Example: USER1_USER=pass123 -> {'user1': 'pass123'}
+    """
+    users = {}
+    for key, value in os.environ.items():
+        if key.upper().endswith('_USER') and not key.upper().startswith('AUTH'):
+            # Extract username from VARNAME_USER
+            username = key.upper().replace('_USER', '').lower()
+            if username:  # Ignore empty usernames
+                users[username] = value
+    return users
 
 
 def hash_password(password: str) -> str:
     """Hash a password using SHA-256 with a pepper (from env)."""
     settings = get_settings()
-    # Use a simple pepper from env or default
     pepper = getattr(settings, 'auth_pepper', 'default-pepper-change-me')
     return hashlib.sha256(f"{password}{pepper}".encode()).hexdigest()
 
 
-def create_token() -> str:
-    """Create a new random token."""
+def create_token(username: str) -> str:
+    """Create a new random token associated with a username."""
     token = secrets.token_urlsafe(32)
-    _valid_tokens.add(token)
+    _valid_tokens[token] = username
     return token
 
 
-def verify_token(token: str | None) -> bool:
-    """Check if a token is valid."""
+def verify_token(token: str | None) -> tuple[bool, str]:
+    """Check if a token is valid. Returns (is_valid, username)."""
     if not token:
-        return False
-    return token in _valid_tokens
+        return False, ""
+    if token in _valid_tokens:
+        return True, _valid_tokens[token]
+    return False, ""
 
 
 def revoke_token(token: str) -> None:
     """Remove a token (logout)."""
-    _valid_tokens.discard(token)
+    _valid_tokens.pop(token, None)
+
+
+def get_token_username(token: str) -> str | None:
+    """Get username associated with token."""
+    return _valid_tokens.get(token)
 
 
 async def require_auth(
@@ -63,7 +90,8 @@ async def require_auth(
         )
     
     token = credentials.credentials
-    if not verify_token(token):
+    is_valid, username = verify_token(token)
+    if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -73,20 +101,30 @@ async def require_auth(
     return token
 
 
-def authenticate_user(password: str) -> str | None:
-    """Verify password and return a new token if valid."""
-    settings = get_settings()
-    admin_password = getattr(settings, 'admin_password', None)
+def authenticate_user(username: str, password: str) -> str | None:
+    """Verify username/password and return a new token if valid.
     
-    if not admin_password:
+    Username is case-insensitive.
+    """
+    users = get_users_from_env()
+    username_lower = username.lower()
+    
+    if username_lower not in users:
         return None
+    
+    expected_password = users[username_lower]
     
     # Compare hashed passwords
     input_hash = hash_password(password)
-    expected_hash = hash_password(admin_password)
+    expected_hash = hash_password(expected_password)
     
     # Use constant-time comparison to prevent timing attacks
     if hmac.compare_digest(input_hash, expected_hash):
-        return create_token()
+        return create_token(username_lower)
     
     return None
+
+
+def list_usernames() -> list[str]:
+    """Return list of configured usernames (for debugging)."""
+    return list(get_users_from_env().keys())

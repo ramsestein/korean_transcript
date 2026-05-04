@@ -128,6 +128,8 @@ label { display: block; font-size: 0.8rem; color: var(--text2); margin-bottom: 6
 .login-box input { width: 100%; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.95rem; }
 .login-box input:focus { outline: none; border-color: var(--accent); }
 .login-box .btn-primary { width: 100%; margin-top: 8px; }
+.users-hint { text-align: center; margin-bottom: 16px; }
+.users-hint small { color: var(--text2); font-size: 0.8rem; }
 
 /* Header row */
 .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }

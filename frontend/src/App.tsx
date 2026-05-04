@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChunkRecorder } from './recorder';
 import { startSession, generateSummary, deleteSession, uploadImages, uploadChunk } from './api';
 import { Login } from './Login';
+import { getAuthToken, setAuthToken, clearAuthToken } from './cookies';
 import type { Language, ChunkInfo, Segment, ChunkResponse } from './types';
 import './styles.css';
 
@@ -24,7 +25,8 @@ function fmt(s: number): string {
 }
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
+  const [token, setToken] = useState<string | null>(getAuthToken());
+  const [username, setUsername] = useState<string>('');
   const [phase, setPhase] = useState<Phase>('setup');
   const [language, setLanguage] = useState<Language | null>(null);
   const [meetingPrompt, setMeetingPrompt] = useState('');
@@ -67,8 +69,9 @@ export default function App() {
   }, [handleNewSegments]);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem('auth_token');
+    clearAuthToken();
     setToken(null);
+    setUsername('');
     window.location.reload();
   }, []);
 
@@ -142,9 +145,10 @@ export default function App() {
     }
   }, [sessionId, token]);
 
-  const handleLoginSuccess = useCallback((newToken: string) => {
+  const handleLoginSuccess = useCallback((newToken: string, newUsername: string) => {
     setToken(newToken);
-    localStorage.setItem('auth_token', newToken);
+    setUsername(newUsername);
+    setAuthToken(newToken);
   }, []);
 
   const handleEnd = useCallback(async () => {
@@ -177,7 +181,10 @@ export default function App() {
           <h1>🇰🇷 Korean Meeting Interpreter</h1>
           <p className="subtitle">Real-time Korean transcription &amp; translation</p>
         </div>
-        <button className="btn-secondary" onClick={handleLogout}>Logout</button>
+        <div style={{ textAlign: 'right' }}>
+          {username && <span style={{ color: 'var(--text2)', marginRight: 12 }}>👤 {username}</span>}
+          <button className="btn-secondary" onClick={handleLogout}>Logout</button>
+        </div>
       </div>
 
       {error && (

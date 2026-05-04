@@ -79,29 +79,35 @@ async def health() -> dict:
 @app.get("/api/auth/status")
 async def auth_status(settings: Annotated[Settings, Depends(get_settings)]) -> dict:
     """Check if authentication is enabled."""
-    return {"auth_enabled": settings.auth_enabled, "admin_configured": bool(settings.admin_password)}
+    from app.auth import list_usernames
+    return {
+        "auth_enabled": settings.auth_enabled,
+        "users_configured": list_usernames() if settings.auth_enabled else []
+    }
 
 
 @app.post("/api/auth/login")
 async def login(request: Request, settings: Annotated[Settings, Depends(get_settings)]) -> JSONResponse:
-    """Login with password and receive a token."""
-    from app.auth import authenticate_user, verify_token
+    """Login with username/password and receive a token."""
+    from app.auth import authenticate_user, get_token_username
     
     # If auth is disabled, return a dummy token
     if not settings.auth_enabled:
-        return JSONResponse({"token": "disabled", "message": "Authentication is disabled"})
-    
-    if not settings.admin_password:
-        raise HTTPException(status_code=500, detail="Admin password not configured")
+        return JSONResponse({"token": "disabled", "username": "anonymous", "message": "Authentication is disabled"})
     
     body = await request.json()
+    username = body.get("username", "").strip()
     password = body.get("password", "")
     
-    token = authenticate_user(password)
-    if not token:
-        raise HTTPException(status_code=401, detail="Invalid password")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password required")
     
-    return JSONResponse({"token": token, "message": "Login successful"})
+    token = authenticate_user(username, password)
+    if not token:
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+    
+    actual_username = get_token_username(token) or username
+    return JSONResponse({"token": token, "username": actual_username, "message": "Login successful"})
 
 
 @app.post("/api/auth/logout")
