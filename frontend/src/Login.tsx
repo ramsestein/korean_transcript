@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 type Props = {
   onLogin: (token: string, username: string) => void;
@@ -11,33 +11,27 @@ export function Login({ onLogin }: Props) {
   const [checking, setChecking] = useState(true);
   const [authEnabled, setAuthEnabled] = useState(true);
   const [availableUsers, setAvailableUsers] = useState<string[]>([]);
-  const [authChecked, setAuthChecked] = useState(false);
 
-  // Store onLogin in ref to avoid effect re-running
-  const onLoginRef = useRef(onLogin);
-  onLoginRef.current = onLogin;  // Keep ref updated
-
-  // Check if auth is actually required and get available users - runs once
+  // Check auth status once on mount
   useEffect(() => {
-    if (authChecked) return;
-    
     fetch('/api/auth/status')
       .then(r => r.json())
       .then(data => {
         setAuthEnabled(data.auth_enabled);
         setAvailableUsers(data.users_configured || []);
-        if (!data.auth_enabled) {
-          onLoginRef.current('disabled', 'anonymous');
-        }
         setChecking(false);
-        setAuthChecked(true);
+        // Only auto-login if auth is disabled
+        if (!data.auth_enabled) {
+          onLogin('disabled', 'anonymous');
+        }
       })
       .catch(() => {
         setChecking(false);
         setError('Cannot connect to server');
-        setAuthChecked(true);
       });
-  }, [authChecked]);
+    // Empty deps = run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
