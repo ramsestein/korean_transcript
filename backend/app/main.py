@@ -143,6 +143,7 @@ async def session_start(
     settings: Annotated[Settings, Depends(get_settings)],
     token: Annotated[str, Depends(require_auth)],
 ) -> SessionStartResponse:
+    logger.info("Session start called with lang=%s, token=%s...", request.target_language, token[:10] if token else 'none')
     session_id = await create_session(request, settings)
     logger.info("Created session %s (lang=%s)", session_id, request.target_language)
     return SessionStartResponse(session_id=session_id)
