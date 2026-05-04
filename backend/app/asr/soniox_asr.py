@@ -121,6 +121,7 @@ async def _poll_until_done(
     transcription_id: str,
     api_key: str,
 ) -> dict[str, Any]:
+    """Poll until complete, then fetch transcript from /transcript endpoint."""
     elapsed = 0.0
     last_status = None
     
@@ -140,7 +141,16 @@ async def _poll_until_done(
         
         if status in ("completed", "done", "finished"):
             logger.info("Soniox transcription %s completed in %.1fs", transcription_id, elapsed)
-            return data
+            # Fetch actual transcript from separate endpoint
+            transcript_resp = await client.get(
+                f"{SONIOX_BASE_URL}/transcriptions/{transcription_id}/transcript",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            transcript_resp.raise_for_status()
+            transcript_data = transcript_resp.json()
+            logger.info("Soniox transcript fetched: %d tokens", len(transcript_data.get("tokens", [])))
+            return transcript_data
+            
         if status in ("failed", "error"):
             error_msg = data.get("error_message", str(data))
             logger.error("Soniox transcription %s failed: %s", transcription_id, error_msg)

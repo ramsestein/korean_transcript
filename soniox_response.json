@@ -1,23 +1,736 @@
 {
-  "id": "aa94ebde-293f-4a24-b863-56896340eda7",
-  "status": "completed",
-  "created_at": "2026-05-04T07:30:50.928Z",
-  "model": "stt-async-v4",
-  "audio_url": null,
-  "file_id": "3495d5b8-6517-4b88-93a7-a12bb6b5c8aa",
-  "filename": "chunk_006.wav",
-  "language_hints": [
-    "ko"
-  ],
-  "enable_speaker_diarization": true,
-  "enable_language_identification": false,
-  "enable_audio_event_detection": false,
-  "audio_duration_ms": 15000,
-  "error_type": null,
-  "error_message": null,
-  "webhook_url": null,
-  "webhook_auth_header_name": null,
-  "webhook_auth_header_value": null,
-  "webhook_status_code": null,
-  "client_reference_id": null
+  "id": "30db84a0-bc3a-4319-b514-73ee05f8e5e2",
+  "text": "나름 여유 있게 살 수 있는데, 이 상태에서 결혼하면 맞벌이를 한다 쳐도 생활 수준이 떨어질 거라는 느낌이 든다는 거죠. 그리고 여자들은 대부분 최소 아파트 전세에서 시작하기를 바라다 보니까.",
+  "tokens": [
+    {
+      "text": "나",
+      "start_ms": 540,
+      "end_ms": 600,
+      "confidence": 0.9344691038131714,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "름",
+      "start_ms": 660,
+      "end_ms": 720,
+      "confidence": 0.9997497200965881,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 여",
+      "start_ms": 780,
+      "end_ms": 840,
+      "confidence": 0.9998970031738281,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "유",
+      "start_ms": 900,
+      "end_ms": 960,
+      "confidence": 0.9999688863754272,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 있",
+      "start_ms": 1020,
+      "end_ms": 1080,
+      "confidence": 0.9958109855651855,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "게",
+      "start_ms": 1140,
+      "end_ms": 1200,
+      "confidence": 0.9999887943267822,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 살",
+      "start_ms": 1320,
+      "end_ms": 1380,
+      "confidence": 0.9999434947967529,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 수",
+      "start_ms": 1440,
+      "end_ms": 1500,
+      "confidence": 0.999971866607666,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 있는",
+      "start_ms": 1560,
+      "end_ms": 1620,
+      "confidence": 0.9998754262924194,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "데",
+      "start_ms": 1800,
+      "end_ms": 1860,
+      "confidence": 0.9999446868896484,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": ",",
+      "start_ms": 1920,
+      "end_ms": 1980,
+      "confidence": 0.999492883682251,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 이",
+      "start_ms": 2700,
+      "end_ms": 2760,
+      "confidence": 0.9999063014984131,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 상",
+      "start_ms": 2820,
+      "end_ms": 2880,
+      "confidence": 0.9999566078186035,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "태",
+      "start_ms": 2940,
+      "end_ms": 3000,
+      "confidence": 0.9999876022338867,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "에서",
+      "start_ms": 3120,
+      "end_ms": 3180,
+      "confidence": 0.9999545812606812,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 결",
+      "start_ms": 3360,
+      "end_ms": 3420,
+      "confidence": 0.9999744892120361,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "혼",
+      "start_ms": 3480,
+      "end_ms": 3540,
+      "confidence": 0.9998452663421631,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "하",
+      "start_ms": 3660,
+      "end_ms": 3720,
+      "confidence": 0.999531626701355,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "면",
+      "start_ms": 3780,
+      "end_ms": 3840,
+      "confidence": 0.9999746084213257,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " ",
+      "start_ms": 4200,
+      "end_ms": 4260,
+      "confidence": 0.9994255304336548,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "맞",
+      "start_ms": 4320,
+      "end_ms": 4380,
+      "confidence": 0.9953256249427795,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "벌",
+      "start_ms": 4500,
+      "end_ms": 4560,
+      "confidence": 0.9999074935913086,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "이",
+      "start_ms": 4620,
+      "end_ms": 4680,
+      "confidence": 0.9999064207077026,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "를",
+      "start_ms": 4740,
+      "end_ms": 4800,
+      "confidence": 0.9997250437736511,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 한",
+      "start_ms": 4860,
+      "end_ms": 4920,
+      "confidence": 0.9997928738594055,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "다",
+      "start_ms": 4920,
+      "end_ms": 4980,
+      "confidence": 0.9913755059242249,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " ",
+      "start_ms": 5100,
+      "end_ms": 5160,
+      "confidence": 0.9976879358291626,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "쳐",
+      "start_ms": 5160,
+      "end_ms": 5220,
+      "confidence": 0.9998952150344849,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "도",
+      "start_ms": 5280,
+      "end_ms": 5340,
+      "confidence": 0.99998939037323,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 생",
+      "start_ms": 6060,
+      "end_ms": 6120,
+      "confidence": 0.9998842477798462,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "활",
+      "start_ms": 6180,
+      "end_ms": 6240,
+      "confidence": 0.9999946355819702,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 수",
+      "start_ms": 6360,
+      "end_ms": 6420,
+      "confidence": 0.9819926023483276,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "준",
+      "start_ms": 6480,
+      "end_ms": 6540,
+      "confidence": 0.9999812841415405,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "이",
+      "start_ms": 6600,
+      "end_ms": 6660,
+      "confidence": 0.9999909400939941,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " ",
+      "start_ms": 6720,
+      "end_ms": 6780,
+      "confidence": 0.99997878074646,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "떨",
+      "start_ms": 6840,
+      "end_ms": 6900,
+      "confidence": 0.9999842643737793,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "어",
+      "start_ms": 6960,
+      "end_ms": 7020,
+      "confidence": 0.9999954700469971,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "질",
+      "start_ms": 7140,
+      "end_ms": 7200,
+      "confidence": 0.9999382495880127,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 거",
+      "start_ms": 7320,
+      "end_ms": 7380,
+      "confidence": 0.9997740387916565,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "라는",
+      "start_ms": 7440,
+      "end_ms": 7500,
+      "confidence": 0.9986029267311096,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " ",
+      "start_ms": 7560,
+      "end_ms": 7620,
+      "confidence": 0.9999909400939941,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "느",
+      "start_ms": 7680,
+      "end_ms": 7740,
+      "confidence": 0.9999821186065674,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "낌",
+      "start_ms": 7740,
+      "end_ms": 7800,
+      "confidence": 0.9999946355819702,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "이",
+      "start_ms": 7920,
+      "end_ms": 7980,
+      "confidence": 0.9999966621398926,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " ",
+      "start_ms": 8280,
+      "end_ms": 8340,
+      "confidence": 0.9999686479568481,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "든",
+      "start_ms": 8400,
+      "end_ms": 8460,
+      "confidence": 0.9996812343597412,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "다는",
+      "start_ms": 8580,
+      "end_ms": 8640,
+      "confidence": 0.9998829364776611,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 거",
+      "start_ms": 8820,
+      "end_ms": 8880,
+      "confidence": 0.9999250173568726,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "죠",
+      "start_ms": 8940,
+      "end_ms": 9000,
+      "confidence": 0.99992835521698,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": ".",
+      "start_ms": 9120,
+      "end_ms": 9180,
+      "confidence": 0.9999899864196777,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 그리고",
+      "start_ms": 9900,
+      "end_ms": 9960,
+      "confidence": 0.9999521970748901,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 여자",
+      "start_ms": 10320,
+      "end_ms": 10380,
+      "confidence": 0.9998281598091125,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "들은",
+      "start_ms": 10620,
+      "end_ms": 10680,
+      "confidence": 0.9997931122779846,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 대",
+      "start_ms": 10980,
+      "end_ms": 11040,
+      "confidence": 0.9999879598617554,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "부분",
+      "start_ms": 11100,
+      "end_ms": 11160,
+      "confidence": 0.9999035596847534,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 최",
+      "start_ms": 11940,
+      "end_ms": 12000,
+      "confidence": 0.9997532963752747,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "소",
+      "start_ms": 12060,
+      "end_ms": 12120,
+      "confidence": 0.9999629259109497,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 아",
+      "start_ms": 12240,
+      "end_ms": 12300,
+      "confidence": 0.9992403984069824,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "파",
+      "start_ms": 12300,
+      "end_ms": 12360,
+      "confidence": 0.9999858140945435,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "트",
+      "start_ms": 12420,
+      "end_ms": 12480,
+      "confidence": 0.9999847412109375,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 전",
+      "start_ms": 12660,
+      "end_ms": 12720,
+      "confidence": 0.9998482465744019,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "세",
+      "start_ms": 12780,
+      "end_ms": 12840,
+      "confidence": 0.9997394680976868,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "에서",
+      "start_ms": 13020,
+      "end_ms": 13080,
+      "confidence": 0.999768078327179,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 시작",
+      "start_ms": 13140,
+      "end_ms": 13200,
+      "confidence": 0.999994158744812,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "하기",
+      "start_ms": 13440,
+      "end_ms": 13500,
+      "confidence": 0.9961804151535034,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "를",
+      "start_ms": 13680,
+      "end_ms": 13740,
+      "confidence": 0.9999731779098511,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 바",
+      "start_ms": 13800,
+      "end_ms": 13860,
+      "confidence": 0.9999728202819824,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "라",
+      "start_ms": 13980,
+      "end_ms": 14040,
+      "confidence": 0.9998323917388916,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "다",
+      "start_ms": 14100,
+      "end_ms": 14160,
+      "confidence": 0.9999563694000244,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": " 보",
+      "start_ms": 14220,
+      "end_ms": 14280,
+      "confidence": 0.9992806315422058,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "니",
+      "start_ms": 14340,
+      "end_ms": 14400,
+      "confidence": 0.9999892711639404,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": "까",
+      "start_ms": 14460,
+      "end_ms": 14520,
+      "confidence": 0.9999394416809082,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    },
+    {
+      "text": ".",
+      "start_ms": 14520,
+      "end_ms": 14520,
+      "confidence": 0.9658961892127991,
+      "speaker": "1",
+      "language": null,
+      "is_audio_event": null,
+      "translation_status": null
+    }
+  ]
 }

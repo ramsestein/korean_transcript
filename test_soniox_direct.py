@@ -183,14 +183,23 @@ async def test_soniox(audio_path: Path):
             result = await poll_until_done(client, transcription_id, api_key)
             print()
             
-            # Step 4: Show results
+            # Step 4: Fetch transcript from /transcript endpoint
+            print("📥 Fetching transcript...")
+            transcript_resp = await client.get(
+                f"{SONIOX_BASE_URL}/transcriptions/{transcription_id}/transcript",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            transcript_resp.raise_for_status()
+            transcript = transcript_resp.json()
+            
+            # Step 5: Show results
             print("="*60)
             print("RESULTS")
             print("="*60)
             
-            tokens = result.get("tokens", [])
+            tokens = transcript.get("tokens", [])
             text = tokens_to_text(tokens)
-            speakers = result.get("speakers", [])
+            speakers = transcript.get("speakers", [])
             
             print(f"\n📊 Tokens: {len(tokens)}")
             print(f"📝 Text ({len(text)} chars):\n{text[:500]}{'...' if len(text) > 500 else ''}")
@@ -202,7 +211,7 @@ async def test_soniox(audio_path: Path):
             output_file = Path("soniox_response.json")
             import json
             with open(output_file, "w", encoding="utf-8") as f:
-                json.dump(result, f, ensure_ascii=False, indent=2)
+                json.dump(transcript, f, ensure_ascii=False, indent=2)
             print(f"\n💾 Full response saved to: {output_file}")
             
         except httpx.HTTPStatusError as e:
