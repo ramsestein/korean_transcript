@@ -84,9 +84,11 @@ export default function App() {
 
       // Upload images if any
       if (imageFiles.length > 0) {
+        console.log('[App] Uploading images, token available:', !!token);
         await uploadImages(token, sid, imageFiles).catch(e => console.warn('Image upload:', e));
       }
 
+      console.log('[App] Starting recorder with token:', token ? token.substring(0, 10) + '...' : 'none');
       const recorder = new ChunkRecorder();
       recorderRef.current = recorder;
 
@@ -440,6 +442,7 @@ class PatchedRecorder {
 
     const upload = (blob: Blob, idx: number, start: number, end: number) => {
       onUpdate({ index: idx, status: 'uploading' });
+      console.log(`[Recorder] Uploading chunk ${idx}, token available:`, !!token, 'token start:', token ? token.substring(0, 10) : 'none');
       const attempt = (retries: number) => {
         uploadChunk(token, sessionId, idx, blob, start, end)
           .then((resp: ChunkResponse) => {

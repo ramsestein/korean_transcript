@@ -5,6 +5,7 @@ function getHeaders(token: string): Record<string, string> {
   if (token && token !== 'disabled') {
     headers['Authorization'] = `Bearer ${token}`;
   }
+  console.log('API: getHeaders token=', token ? token.substring(0, 10) + '...' : 'none', 'hasAuth=', !!headers['Authorization']);
   return headers;
 }
 

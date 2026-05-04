@@ -215,6 +215,14 @@ async def require_auth(
     if not getattr(settings, 'auth_enabled', False):
         return "disabled"
     
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    if credentials:
+        logger.info("require_auth: Received token %s...", credentials.credentials[:10])
+    else:
+        logger.info("require_auth: No credentials provided (401)")
+    
     if not credentials:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
