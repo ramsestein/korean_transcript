@@ -90,16 +90,26 @@ async def _create_transcription(
         "file_id": file_id,
         "model": model,
         "language_hints": ["ko"],
-        "enable_speaker_diarization": True,
+        "enable_speaker_diarization": False,  # Disabled for chunk-level processing
         "include_timestamps": True,
     }
+    logger.info("Soniox create transcription payload: %s", payload)
+    
     response = await client.post(
         f"{SONIOX_BASE_URL}/transcriptions",
         headers={"Authorization": f"Bearer {api_key}"},
         json=payload,
     )
+    
+    logger.info("Soniox create response status: %s", response.status_code)
+    
+    if response.status_code == 429:
+        raise RuntimeError(f"Soniox rate limited: {response.text}")
+    
     response.raise_for_status()
     data = response.json()
+    logger.info("Soniox create response: %s", data)
+    
     tx_id = data.get("id") or data.get("transcription_id")
     if not tx_id:
         raise ValueError(f"Soniox create transcription returned no id: {data}")
@@ -112,6 +122,8 @@ async def _poll_until_done(
     api_key: str,
 ) -> dict[str, Any]:
     elapsed = 0.0
+    last_status = None
+    
     while elapsed < MAX_POLL_SECONDS:
         response = await client.get(
             f"{SONIOX_BASE_URL}/transcriptions/{transcription_id}",
@@ -120,13 +132,24 @@ async def _poll_until_done(
         response.raise_for_status()
         data = response.json()
         status = data.get("status", "")
+        
+        # Only log on status change
+        if status != last_status:
+            logger.info("Soniox transcription %s status: %s", transcription_id, status)
+            last_status = status
+        
         if status in ("completed", "done", "finished"):
+            logger.info("Soniox transcription %s completed in %.1fs", transcription_id, elapsed)
             return data
         if status in ("failed", "error"):
-            raise RuntimeError(f"Soniox transcription failed: {data}")
+            error_msg = data.get("error_message", str(data))
+            logger.error("Soniox transcription %s failed: %s", transcription_id, error_msg)
+            raise RuntimeError(f"Soniox transcription failed: {error_msg}")
+        
         await asyncio.sleep(POLL_INTERVAL)
         elapsed += POLL_INTERVAL
 
+    logger.error("Soniox transcription %s timeout after %.1fs", transcription_id, elapsed)
     raise TimeoutError(
         f"Soniox transcription {transcription_id} did not complete within {MAX_POLL_SECONDS}s"
     )

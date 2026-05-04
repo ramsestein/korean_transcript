@@ -30,9 +30,9 @@ async def run_parallel_asr(
         )
     )
     soniox_task = asyncio.create_task(
-        _safe_transcribe(
-            transcribe_with_soniox(audio_path, soniox_api_key, soniox_model),
-            "soniox",
+        _safe_transcribe_with_retry(
+            audio_path, soniox_api_key, soniox_model,
+            max_retries=3,
         )
     )
 
@@ -64,3 +64,35 @@ async def _safe_transcribe(
         err_msg = f"{type(exc).__name__}: {exc}"
         logger.error("ASR provider %s error: %s", provider, err_msg)
         return None, err_msg
+
+
+async def _safe_transcribe_with_retry(
+    audio_path: Path,
+    api_key: str,
+    model: str,
+    max_retries: int = 3,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Retry Soniox transcription with exponential backoff on resource exhaustion."""
+    import time
+    
+    for attempt in range(max_retries):
+        result, error = await _safe_transcribe(
+            transcribe_with_soniox(audio_path, api_key, model),
+            "soniox",
+        )
+        
+        if result is not None:
+            return result, None
+        
+        # Check if it's a resource exhaustion error
+        if error and "resource_exhausted" in error.lower():
+            wait_time = 2 ** attempt  # 1s, 2s, 4s
+            logger.warning("Soniox resource exhausted (attempt %d/%d), retrying in %ds...", 
+                          attempt + 1, max_retries, wait_time)
+            await asyncio.sleep(wait_time)
+            continue
+        else:
+            # Other errors, don't retry
+            return None, error
+    
+    return None, f"Soniox failed after {max_retries} attempts. Last error: {error}"
