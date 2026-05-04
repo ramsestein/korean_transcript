@@ -273,6 +273,13 @@ async def upload_chunk(
         settings=settings,
     )
 
+    # Determine which ASR models heard this segment
+    asr_sources = []
+    if openai_text.strip():
+        asr_sources.append("openai")
+    if soniox_text.strip():
+        asr_sources.append("soniox")
+    
     segment_id = f"{session_id}_{chunk_index}"
     new_segment = Segment(
         segment_id=segment_id,
@@ -292,6 +299,7 @@ async def upload_chunk(
         terminology=recon_result["terminology"],
         agreement=agreement,
         revision_status="draft",
+        asr_sources=asr_sources,
     )
 
     await append_segment(session_id, new_segment, settings)

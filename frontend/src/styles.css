@@ -67,6 +67,7 @@ input[type="file"] { display: none; }
 .badge-draft   { background: #33335522; color: var(--text2); border: 1px solid var(--border); }
 .badge-revised { background: #7c5cbf22; color: #b488ff; border: 1px solid #7c5cbf44; }
 .badge-final   { background: #15803d22; color: var(--green); border: 1px solid #15803d44; }
+.badge-asr { background: var(--surface2); color: var(--text2); font-size: 0.7rem; }
 
 /* Chunk status list */
 .chunk-list { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }

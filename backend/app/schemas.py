@@ -71,6 +71,7 @@ class Segment(BaseModel):
     agreement: AgreementMetrics | None = None
     revision_status: RevisionStatus = "draft"
     revision_history: list[RevisionHistoryEntry] = Field(default_factory=list)
+    asr_sources: list[str] = Field(default_factory=list)  # e.g., ["openai"], ["soniox"], or ["openai", "soniox"]
 
 
 class ChunkResponse(BaseModel):

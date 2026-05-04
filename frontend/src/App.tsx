@@ -375,6 +375,9 @@ function TranscriptPanel({ segments }: { segments: Segment[] }) {
             <div className="segment-meta">
               <span className={`badge badge-${seg.confidence}`}>{seg.confidence}</span>
               <span className={`badge badge-${seg.revision_status}`}>{seg.revision_status}</span>
+              <span className="badge badge-asr">
+                {seg.asr_sources?.length === 2 ? '🔵🔵 both' : seg.asr_sources?.length === 1 ? (seg.asr_sources[0] === 'openai' ? '🔵⚪ openai' : '⚪🔵 soniox') : '⚪⚪ none'}
+              </span>
               <span className="segment-time">{fmt(seg.time_start)}–{fmt(seg.time_end)}</span>
             </div>
           </div>

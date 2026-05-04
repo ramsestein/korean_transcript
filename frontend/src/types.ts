@@ -27,6 +27,7 @@ export interface Segment {
   uncertainties: string[];
   agreement: AgreementMetrics;
   revision_status: 'draft' | 'revised' | 'final';
+  asr_sources?: string[];  // Which ASR models heard this: ["openai"], ["soniox"], or ["openai", "soniox"]
 }
 
 export interface ChunkResponse {
