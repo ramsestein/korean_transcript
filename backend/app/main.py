@@ -17,6 +17,7 @@ from app.asr.parallel_asr import run_parallel_asr
 from app.audio.chunking import build_augmented_clip
 from app.audio.convert import convert_to_wav_16k_mono
 from app.audio.overlap import drop_prefix_tokens, tokens_to_speaker_turns, tokens_to_text
+from app.auth import require_auth
 from app.config import Settings, get_settings
 from app.deps import verify_session
 from app.llm.image_context import extract_image_context
@@ -139,11 +140,25 @@ async def logout(request: Request) -> JSONResponse:
 
 @app.post("/api/session/start", response_model=SessionStartResponse)
 async def session_start(
-    request: SessionStartRequest,
+    raw_request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
-    token: Annotated[str, Depends(require_auth)],
 ) -> SessionStartResponse:
-    logger.info("Session start called with lang=%s, token=%s...", request.target_language, token[:10] if token else 'none')
+    # Parse body manually for better error handling
+    try:
+        body = await raw_request.json()
+        logger.info("Session start raw body: %s", body)
+    except Exception as e:
+        logger.error("Failed to parse JSON body: %s", e)
+        raise HTTPException(status_code=400, detail=f"Invalid JSON: {e}")
+    
+    # Validate and create request object
+    try:
+        request = SessionStartRequest(**body)
+    except Exception as e:
+        logger.error("Failed to validate SessionStartRequest: %s", e)
+        raise HTTPException(status_code=422, detail=f"Validation error: {e}")
+    
+    logger.info("Session start validated with lang=%s", request.target_language)
     session_id = await create_session(request, settings)
     logger.info("Created session %s (lang=%s)", session_id, request.target_language)
     return SessionStartResponse(session_id=session_id)
