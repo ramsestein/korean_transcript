@@ -101,38 +101,120 @@ def download_youtube_audio(youtube_url, output_dir):
         raise
 
 
+def find_ffmpeg():
+    """Find ffmpeg executable in common locations"""
+    import shutil
+    
+    # Check if already in PATH
+    ffmpeg_path = shutil.which("ffmpeg")
+    if ffmpeg_path:
+        return ffmpeg_path
+    
+    # Common locations to search
+    common_paths = [
+        r"C:\Program Files\CapCut\Apps\3.7.0.1379\ffmpeg.exe",
+        r"C:\ffmpeg\bin\ffmpeg.exe",
+        r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+        r"C:\Program Files (x86)\ffmpeg\bin\ffmpeg.exe",
+    ]
+    
+    for path in common_paths:
+        if Path(path).exists():
+            return path
+    
+    return None
+
+
+def extract_audio_with_ffmpeg(video_path, output_wav):
+    """Extract audio from video file using ffmpeg-python"""
+    try:
+        import ffmpeg
+    except ImportError:
+        print("❌ ffmpeg-python not found. Install with: pip install ffmpeg-python")
+        sys.exit(1)
+    
+    # Find ffmpeg binary
+    ffmpeg_exe = find_ffmpeg()
+    if not ffmpeg_exe:
+        print("❌ ffmpeg.exe not found. Please install ffmpeg or ensure it's in PATH")
+        print("   Common locations checked: CapCut, C:\ffmpeg, Program Files")
+        sys.exit(1)
+    
+    print(f"   Using ffmpeg from: {ffmpeg_exe}")
+    
+    # Set ffmpeg binary for ffmpeg-python
+    import os
+    os.environ['FFMPEG_BINARY'] = ffmpeg_exe
+    
+    print(f"   Extracting audio from video...")
+    try:
+        # Extract audio to mono 16kHz WAV (optimal for ASR)
+        (
+            ffmpeg
+            .input(video_path)
+            .output(output_wav, ac=1, ar=16000, vn=None)
+            .overwrite_output()
+            .run(cmd=ffmpeg_exe, quiet=True)
+        )
+        return output_wav
+    except ffmpeg.Error as e:
+        print(f"❌ ffmpeg extraction failed: {e}")
+        raise
+
+
 def split_audio(audio_path, output_dir, chunk_seconds=15):
-    """Split audio into chunks using ffmpeg"""
+    """Split audio into chunks using pydub"""
     print(f"\n✂️  Splitting audio into {chunk_seconds}s chunks...")
+    
+    try:
+        from pydub import AudioSegment
+    except ImportError:
+        print("❌ pydub not found. Install with: pip install pydub")
+        sys.exit(1)
+    
+    # Configure pydub to use our found ffmpeg
+    ffmpeg_exe = find_ffmpeg()
+    if ffmpeg_exe:
+        AudioSegment.converter = ffmpeg_exe
+        AudioSegment.ffmpeg = ffmpeg_exe
     
     chunk_dir = Path(output_dir) / "chunks"
     chunk_dir.mkdir(exist_ok=True)
     
-    # Use ffmpeg to split
-    output_pattern = str(chunk_dir / "chunk_%03d.webm")
-    cmd = [
-        "ffmpeg",
-        "-i", audio_path,
-        "-f", "segment",
-        "-segment_time", str(chunk_seconds),
-        "-c", "copy",
-        "-reset_timestamps", "1",
-        output_pattern
-    ]
+    # Check if input is video, extract audio first
+    audio_ext = Path(audio_path).suffix.lower()
+    if audio_ext in ['.mp4', '.avi', '.mov', '.mkv', '.webm']:
+        wav_path = str(Path(output_dir) / "extracted_audio.wav")
+        audio_path = extract_audio_with_ffmpeg(audio_path, wav_path)
     
     try:
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        # Load audio file
+        print(f"   Loading audio file...")
+        audio = AudioSegment.from_file(audio_path)
         
-        # Get list of chunks
-        chunks = sorted(chunk_dir.glob("chunk_*.webm"))
+        # Ensure mono 16kHz
+        if audio.channels != 1 or audio.frame_rate != 16000:
+            print(f"   Converting to mono 16kHz...")
+            audio = audio.set_channels(1).set_frame_rate(16000)
+        
+        chunk_length_ms = chunk_seconds * 1000
+        chunks = []
+        
+        for i, start_ms in enumerate(range(0, len(audio), chunk_length_ms)):
+            end_ms = min(start_ms + chunk_length_ms, len(audio))
+            chunk = audio[start_ms:end_ms]
+            
+            # Export as webm/opus
+            chunk_path = chunk_dir / f"chunk_{i:03d}.webm"
+            chunk.export(str(chunk_path), format="webm", codec="opus")
+            chunks.append(chunk_path)
+            
         print(f"✅ Created {len(chunks)} chunks")
         return chunks
-    except subprocess.CalledProcessError as e:
-        print(f"❌ Split failed: {e.stderr}")
+        
+    except Exception as e:
+        print(f"❌ Split failed: {e}")
         raise
-    except FileNotFoundError:
-        print("❌ ffmpeg not found. Please install ffmpeg")
-        sys.exit(1)
 
 
 def upload_chunk(session_id, chunk_path, chunk_index, start_time, end_time):
@@ -196,11 +278,62 @@ def process_chunks(session_id, chunks):
     return results
 
 
+def fetch_and_display_transcript(session_id):
+    """Fetch the complete transcript from the API and display it"""
+    url = f"{BASE_URL}/api/session/{session_id}/transcript"
+    headers = {}
+    if TOKEN and TOKEN != "disabled":
+        headers["Authorization"] = f"Bearer {TOKEN}"
+    
+    print(f"\n{'='*70}")
+    print(f"📄 TRANSCRIPT FOR SESSION: {session_id}")
+    print(f"{'='*70}")
+    
+    try:
+        resp = requests.get(url, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        segments = data.get("segments", [])
+        if not segments:
+            print("\n   No transcript segments available yet.")
+            return
+        
+        print(f"\nTotal segments: {len(segments)}\n")
+        
+        for seg in segments:
+            idx = seg.get("chunk_index", 0)
+            asr_sources = seg.get("asr_sources", [])
+            
+            # ASR indicator
+            if len(asr_sources) == 2:
+                asr_indicator = "🔵🔵 BOTH"
+            elif "openai" in asr_sources:
+                asr_indicator = "🔵⚪ OpenAI"
+            elif "soniox" in asr_sources:
+                asr_indicator = "⚪🔵 Soniox"
+            else:
+                asr_indicator = "⚪⚪ NONE"
+            
+            ko_text = seg.get("reconstructed_ko", "") or seg.get("translated_text", "")
+            trans_text = seg.get("translated_text", "")
+            confidence = seg.get("confidence", "unknown")
+            
+            print(f"Chunk {idx:3d} | {asr_indicator} | confidence: {confidence.upper()}")
+            print(f"         Korean: {ko_text[:80]}{'...' if len(ko_text) > 80 else ''}")
+            if trans_text and trans_text != ko_text:
+                print(f"         Trans:  {trans_text[:80]}{'...' if len(trans_text) > 80 else ''}")
+            print()
+            
+    except Exception as e:
+        print(f"\n   ⚠️  Could not fetch transcript: {e}")
+
+
 def print_summary(session_id, results):
     """Print summary of ASR results"""
-    print(f"\n{'='*60}")
+    print(f"\n{'='*70}")
     print(f"SUMMARY FOR SESSION: {session_id}")
-    print(f"{'='*60}")
+    print(f"{'='*70}")
     
     both = sum(1 for r in results for s in r.get("segments", []) if len(s.get("asr_sources", [])) == 2)
     only_openai = sum(1 for r in results for s in r.get("segments", []) if s.get("asr_sources", []) == ["openai"])
@@ -274,6 +407,9 @@ def main():
             
             # Step 5: Print summary
             print_summary(session_id, results)
+            
+            # Step 6: Fetch and display the transcript
+            fetch_and_display_transcript(session_id)
             
             print(f"\n🔗 View transcript at: {BASE_URL}/api/session/{session_id}/transcript")
             
