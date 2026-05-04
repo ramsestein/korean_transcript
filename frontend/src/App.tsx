@@ -132,6 +132,25 @@ export default function App() {
     }
   }, [sessionId, token]);
 
+  const handleDownloadSummary = useCallback(async () => {
+    if (!sessionId || !token) return;
+    try {
+      const res = await fetch(`/api/session/${sessionId}/summary.md`, {
+        headers: token !== 'disabled' ? { 'Authorization': `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'summary.md';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [sessionId, token]);
+
   const handleLivePhoto = useCallback(async (file: File) => {
     if (!sessionId || !token) return;
     const id = `${Date.now()}-${file.name}`;
@@ -268,7 +287,7 @@ export default function App() {
                 {summaryLoading ? <><span className="spinner" /> Generating…</> : '📄 Generate Operational Summary'}
               </button>
             ) : (
-              <a className="summary-url" href={summaryUrl} download="summary.md">⬇ Download summary.md</a>
+              <button className="btn-primary download-btn" onClick={handleDownloadSummary}>⬇ Download summary.md</button>
             )}
             <div style={{ marginTop: 10 }}>
               <button className="btn-secondary" onClick={handleEnd} style={{ width: '100%' }}>🔄 New Session</button>
