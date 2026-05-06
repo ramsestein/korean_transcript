@@ -26,6 +26,18 @@ def _load_prompt() -> str:
     return ""
 
 
+MAX_INPUT_CHARS = 60_000  # ~15k tokens, safe for most models
+MAX_OUTPUT_TOKENS = 16_000
+
+
+def _truncate_text(text: str, max_chars: int, label: str) -> str:
+    """Truncate text with a notice if it exceeds the limit."""
+    if len(text) <= max_chars:
+        return text
+    logger.warning("Truncating %s from %d to %d chars for summary", label, len(text), max_chars)
+    return text[:max_chars] + f"\n\n[... {label} truncated due to length ...]"
+
+
 async def generate_summary(
     segments: list[Segment],
     target_language: TargetLanguage,
@@ -51,6 +63,11 @@ async def generate_summary(
         if s.translated_text
     )
 
+    # Truncate if too long to avoid context window overflow
+    half_limit = MAX_INPUT_CHARS // 2
+    reconstructed_ko_full = _truncate_text(reconstructed_ko_full, half_limit, "reconstructed_ko")
+    translated_full = _truncate_text(translated_full, half_limit, "translated")
+
     all_uncertainties = []
     for s in segments:
         all_uncertainties.extend(s.uncertainties)
@@ -70,15 +87,21 @@ async def generate_summary(
         "reconstructed_ko_full": reconstructed_ko_full,
         "translated_full": translated_full,
         "image_contexts": image_ctx_list,
-        "segment_uncertainties": all_uncertainties,
+        "segment_uncertainties": all_uncertainties[:50],  # Cap uncertainties
         "target_language": target_language,
+        "total_segments": len(segments),
     }
+
+    logger.info(
+        "Generating summary: %d segments, ko=%d chars, translated=%d chars",
+        len(segments), len(reconstructed_ko_full), len(translated_full),
+    )
 
     result = await provider.complete_json(
         model=model,
         system=system_prompt,
         user=json.dumps(user_payload, ensure_ascii=False),
-        max_tokens=4096,
+        max_tokens=MAX_OUTPUT_TOKENS,
     )
 
     markdown = result.get("markdown") or result.get("summary") or result.get("text", "")
