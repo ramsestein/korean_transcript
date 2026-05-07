@@ -9,7 +9,8 @@ Real-time Korean-to-multilingual meeting interpreter. Capture audio from your br
 - **LLM Reconstruction**: AI reconstructs fragmented Korean into coherent sentences
 - **Translation**: Real-time translation to ES / EN / ZH with terminology consistency
 - **Live Photo Capture**: Snap photos during recording to add visual context to the conversation
-- **Operational Summary**: Generate a structured meeting summary at the end
+- **Operational Summary**: Generate a structured Markdown summary at the end of each session; filename includes timestamp and username (e.g. `summary_20260507_143022_ramses.md`)
+- **Summary History**: Persistent logs volume stores all summaries per user; dedicated page to browse and download previous summaries
 - **Docker Ready**: Single-command deployment via Docker Compose
 - **Multi-User Auth**: Define users via environment variables (e.g., `USER1_USER=password`)
 - **PWA Support**: Install as mobile app (Add to Home Screen)
@@ -40,9 +41,10 @@ docker compose up -d --build
 | `AUTH_ENABLED` | No | Set `true` to enable login protection |
 | `*_USER` | If auth on | User credentials, e.g. `USER1_USER=password` creates user "user1" |
 | `SONIOX_API_KEY` | No | Soniox API key for dual-ASR mode |
-| `DEEPSEEK_API_KEY` | No | Alternative LLM provider |
-| `GEMINI_API_KEY` | No | Alternative LLM provider |
-| `CLAUDE_API_KEY` | No | Alternative LLM provider |
+| `GOOGLE_API_KEY` | No | Google AI (Gemini) API key — used by default for reconstruct & translate |
+| `CLAUDE_API_KEY` | No | Anthropic Claude API key (stub, not yet active) |
+| `DATA_DIR` | No | Session data directory (default `/app/data`) |
+| `LOGS_DIR` | No | Persistent summary logs directory (default `/app/logs`) |
 
 All other variables have sensible defaults in `backend/app/config.py`.
 
@@ -58,9 +60,11 @@ All other variables have sensible defaults in `backend/app/config.py`.
 | `/api/session/{id}/chunk` | POST | Upload audio chunk (requires auth) |
 | `/api/session/{id}/context/images` | POST | Upload image for context (requires auth) |
 | `/api/session/{id}/transcript` | GET | Get current transcript (requires auth) |
-| `/api/session/{id}/summary` | POST | Generate meeting summary (requires auth) |
-| `/api/session/{id}/summary.md` | GET | Download summary (requires auth) |
+| `/api/session/{id}/summary` | POST | Generate summary; saves to session + logs volume (requires auth) |
+| `/api/session/{id}/summary.md` | GET | Download summary for current session (requires auth) |
 | `/api/session/{id}` | DELETE | End and cleanup session (requires auth) |
+| `/api/summaries` | GET | List all summaries belonging to the authenticated user (requires auth) |
+| `/api/summaries/{filename}` | GET | Download a specific summary from the logs volume (requires auth) |
 
 ## Architecture
 
@@ -72,13 +76,15 @@ All other variables have sensible defaults in `backend/app/config.py`.
 │   │   ├── audio/        # Audio chunking and overlap handling
 │   │   ├── auth.py       # Multi-user authentication
 │   │   ├── llm/          # LLM tasks: reconstruct, translate, summarize
+│   │   │   └── providers/  # OpenAI, Google (Gemini), Anthropic (stub)
+│   │   ├── output/       # Markdown writer, summary export (session + logs)
 │   │   ├── session/      # Session state management
 │   │   └── main.py       # FastAPI application
 │   ├── pyproject.toml
 │   └── tests/
 ├── frontend/
 │   ├── src/
-│   │   ├── App.tsx       # React application
+│   │   ├── App.tsx       # React application (setup / recording / done / summaries phases)
 │   │   ├── api.ts        # Backend API client
 │   │   ├── cookies.ts    # Cookie utilities
 │   │   ├── Login.tsx     # Authentication UI
@@ -89,8 +95,10 @@ All other variables have sensible defaults in `backend/app/config.py`.
 │   │   └── sw.js         # Service worker
 │   └── package.json
 ├── prompts/              # LLM prompt templates
-├── Dockerfile            # Combined frontend+backend for PaaS
-├── Dockerfile.backend    # Backend only (for local dev)
+├── data/                 # Session data (mounted volume in Docker)
+├── logs/                 # Persistent summary logs (mounted volume in Docker)
+├── Dockerfile.web        # Combined frontend+backend for PaaS (nginx + uvicorn)
+├── Dockerfile.backend    # Backend only (for docker-compose)
 ├── docker-compose.yml    # Local development
 └── .env.example          # Environment template
 ```
@@ -100,9 +108,9 @@ All other variables have sensible defaults in `backend/app/config.py`.
 - **Backend**: Python 3.12, FastAPI, Pydantic Settings
 - **Frontend**: React 18, TypeScript, Vite
 - **ASR**: OpenAI Whisper API, optional Soniox
-- **LLM**: OpenAI GPT-5.4 series (configurable per task)
+- **LLM**: OpenAI GPT-5.4 series + Google Gemini 2.5 Flash (configurable per task)
 - **Audio**: ffmpeg (Docker), Web Audio API (browser)
-- **Deployment**: Docker Compose, nginx reverse proxy
+- **Deployment**: Docker Compose, nginx reverse proxy; persistent `logs/` volume for summaries
 - **Auth**: Multi-user with cookies (30-day session)
 - **PWA**: Service worker, offline support, installable
 
