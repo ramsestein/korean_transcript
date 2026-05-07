@@ -1,4 +1,4 @@
-import type { Language, ChunkResponse } from './types';
+import type { Language, ChunkResponse, SummaryItem } from './types';
 
 function getHeaders(token: string): Record<string, string> {
   const headers: Record<string, string> = {};
@@ -85,4 +85,18 @@ export async function deleteSession(token: string, sessionId: string): Promise<v
     method: 'DELETE',
     headers: getHeaders(token),
   });
+}
+
+export async function listSummaries(token: string): Promise<SummaryItem[]> {
+  const res = await fetch('/api/summaries', { headers: getHeaders(token) });
+  if (!res.ok) throw new Error(`Failed to list summaries: ${res.status}`);
+  return res.json();
+}
+
+export async function downloadSummaryFile(token: string, filename: string): Promise<Blob> {
+  const res = await fetch(`/api/summaries/${encodeURIComponent(filename)}`, {
+    headers: getHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  return res.blob();
 }

@@ -111,6 +111,14 @@ input[type="file"] { display: none; }
 .photo-thumb-error { border-color: var(--red); }
 .photo-thumb-error .photo-status { background: rgba(239,68,68,0.25); color: var(--red); }
 
+/* Summary history */
+.summary-history-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.summary-history-empty { color: var(--text2); font-size: 0.85rem; padding: 8px 0; }
+.summary-list { display: flex; flex-direction: column; gap: 10px; }
+.summary-list-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border); }
+.summary-list-date { font-size: 0.9rem; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.summary-list-name { font-size: 0.72rem; color: var(--text2); margin-top: 2px; word-break: break-all; }
+
 /* Error banner */
 .error-banner { background: #9f121218; border: 1px solid var(--red); border-radius: 8px; padding: 10px 14px; color: var(--red); font-size: 0.85rem; margin-bottom: 12px; }
 

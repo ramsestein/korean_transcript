@@ -7,8 +7,10 @@ services:
       - .env
     environment:
       - DATA_DIR=/app/data
+      - LOGS_DIR=/app/logs
     volumes:
       - ./data:/app/data
+      - ./logs:/app/logs
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     healthcheck:

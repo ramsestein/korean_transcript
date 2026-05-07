@@ -42,5 +42,6 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=3 \
 EXPOSE 8080
 ENV PORT=8080
 ENV DATA_DIR=/app/data
+ENV LOGS_DIR=/app/logs
 
 CMD ["/app/start.sh"]

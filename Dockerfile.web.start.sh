@@ -6,8 +6,8 @@ echo "=== Starting Korean Meeting Interpreter ==="
 # Substitute PORT in nginx config
 envsubst '$PORT' < /etc/nginx/templates/default.conf.template > /etc/nginx/sites-enabled/default
 
-# Create data directory
-mkdir -p /app/data
+# Create data and logs directories
+mkdir -p /app/data /app/logs
 
 echo "Starting backend on port 8000..."
 

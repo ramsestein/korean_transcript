@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChunkRecorder } from './recorder';
-import { startSession, generateSummary, deleteSession, uploadImages, uploadChunk } from './api';
+import { startSession, generateSummary, deleteSession, uploadImages, uploadChunk, listSummaries, downloadSummaryFile } from './api';
 import { Login } from './Login';
 import { getAuthToken, setAuthToken, clearAuthToken } from './cookies';
-import type { Language, ChunkInfo, Segment, ChunkResponse } from './types';
+import type { Language, ChunkInfo, Segment, ChunkResponse, SummaryItem } from './types';
 import './styles.css';
 
-type Phase = 'setup' | 'recording' | 'done';
+type Phase = 'setup' | 'recording' | 'done' | 'summaries';
 
 type LivePhoto = {
   id: string;
@@ -73,6 +73,10 @@ export default function App() {
     setToken(null);
     setUsername('');
     window.location.reload();
+  }, []);
+
+  const handleViewHistory = useCallback(() => {
+    setPhase('summaries');
   }, []);
 
   const handleStart = useCallback(async () => {
@@ -222,6 +226,15 @@ export default function App() {
           imageFiles={imageFiles}
           setImageFiles={setImageFiles}
           onStart={handleStart}
+          onViewHistory={handleViewHistory}
+        />
+      )}
+
+      {phase === 'summaries' && token && (
+        <SummaryHistoryPage
+          token={token}
+          username={username}
+          onBack={() => setPhase('setup')}
         />
       )}
 
@@ -304,7 +317,7 @@ export default function App() {
 // --- SetupPanel ---
 function SetupPanel({
   language, setLanguage, meetingPrompt, setMeetingPrompt,
-  imageFiles, setImageFiles, onStart
+  imageFiles, setImageFiles, onStart, onViewHistory
 }: {
   language: Language | null;
   setLanguage: (l: Language) => void;
@@ -313,6 +326,7 @@ function SetupPanel({
   imageFiles: File[];
   setImageFiles: (f: File[]) => void;
   onStart: () => void;
+  onViewHistory: () => void;
 }) {
   return (
     <>
@@ -356,6 +370,9 @@ function SetupPanel({
 
       <button className="btn-primary" disabled={!language} onClick={onStart}>
         🎙 Start Recording
+      </button>
+      <button className="btn-secondary" style={{ width: '100%', marginTop: 10 }} onClick={onViewHistory}>
+        📂 Previous Summaries
       </button>
     </>
   );
@@ -522,4 +539,74 @@ class PatchedRecorder {
     if (mr && mr.state !== 'inactive') mr.stop();
     stream?.getTracks().forEach(t => t.stop());
   }
+}
+
+// --- SummaryHistoryPage ---
+function SummaryHistoryPage({ token, onBack }: { token: string; username: string; onBack: () => void }) {
+  const [summaries, setSummaries] = useState<SummaryItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  useEffect(() => {
+    listSummaries(token)
+      .then(setSummaries)
+      .catch(e => setError(String(e)));
+  }, [token]);
+
+  const handleDownload = async (filename: string) => {
+    setDownloading(filename);
+    try {
+      const blob = await downloadSummaryFile(token, filename);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setDownloading(null);
+    }
+  };
+
+  const formatDate = (filename: string) => {
+    const m = filename.match(/^summary_(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_/);
+    if (!m) return filename;
+    return `${m[1]}-${m[2]}-${m[3]}  ${m[4]}:${m[5]}:${m[6]} UTC`;
+  };
+
+  return (
+    <div className="app">
+      <div className="card">
+        <div className="summary-history-header">
+          <button className="btn-secondary" onClick={onBack} style={{ width: 'auto', minHeight: 36, padding: '6px 14px' }}>← Back</button>
+          <h2 style={{ margin: 0 }}>Previous Summaries</h2>
+        </div>
+        {error && <div className="error-banner" style={{ marginTop: 12 }}>⚠ {error}</div>}
+        {summaries === null && !error && <div className="summary-history-empty">Loading…</div>}
+        {summaries?.length === 0 && <div className="summary-history-empty">No summaries yet.</div>}
+        {summaries && summaries.length > 0 && (
+          <div className="summary-list">
+            {summaries.map(s => (
+              <div key={s.filename} className="summary-list-item">
+                <div>
+                  <div className="summary-list-date">{formatDate(s.filename)}</div>
+                  <div className="summary-list-name">{s.filename}</div>
+                </div>
+                <button
+                  className="btn-outline"
+                  style={{ width: 'auto', minHeight: 36, padding: '6px 14px', fontSize: '0.85rem', flexShrink: 0 }}
+                  disabled={downloading === s.filename}
+                  onClick={() => handleDownload(s.filename)}
+                >
+                  {downloading === s.filename ? <span className="spinner" /> : '⬇ Download'}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }

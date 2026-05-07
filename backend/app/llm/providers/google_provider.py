@@ -52,6 +52,25 @@ class GoogleProvider:
         logger.debug("Gemini %s response: %d chars", model, len(raw))
         return self._parse_json(raw)
 
+    async def complete_text(
+        self,
+        model: str,
+        system: str,
+        user: str,
+        max_tokens: int = 2048,
+    ) -> str:
+        config = types.GenerateContentConfig(
+            system_instruction=system,
+            temperature=0.2,
+            max_output_tokens=max_tokens,
+        )
+        response = await self._client.aio.models.generate_content(
+            model=model,
+            contents=user,
+            config=config,
+        )
+        return response.text or ""
+
     @staticmethod
     def _parse_json(raw: str) -> dict:
         try:

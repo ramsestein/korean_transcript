@@ -19,3 +19,15 @@ class AnthropicProvider:
             "AnthropicProvider is not yet implemented. "
             "Set LLM_PROVIDER_<TASK>=openai in .env to use OpenAI instead."
         )
+
+    async def complete_text(
+        self,
+        model: str,
+        system: str,
+        user: str,
+        max_tokens: int = 2048,
+    ) -> str:
+        raise NotImplementedError(
+            "AnthropicProvider is not yet implemented. "
+            "Set LLM_PROVIDER_<TASK>=openai in .env to use OpenAI instead."
+        )

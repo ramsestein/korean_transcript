@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,7 +18,7 @@ from app.asr.parallel_asr import run_parallel_asr
 from app.audio.chunking import build_augmented_clip
 from app.audio.convert import convert_to_wav_16k_mono
 from app.audio.overlap import drop_prefix_tokens, tokens_to_speaker_turns, tokens_to_text
-from app.auth import require_auth
+from app.auth import require_auth, verify_token
 from app.config import Settings, get_settings
 from app.deps import verify_session
 from app.llm.image_context import extract_image_context
@@ -508,17 +509,27 @@ async def generate_summary_endpoint(
     settings: Annotated[Settings, Depends(get_settings)],
     token: Annotated[str, Depends(require_auth)],
 ) -> SummaryResponse:
+    import re
+    from datetime import datetime, timezone
+    from app.auth import verify_token
+
     manifest = await get_session_manifest(session_id, settings)
     if manifest is None:
         raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
 
+    _, username = verify_token(token)
+    safe_user = re.sub(r"[^\w]", "_", username or "user")[:32]
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    filename = f"summary_{timestamp}_{safe_user}.md"
+
     try:
-        await export_summary(manifest, settings)
+        await export_summary(manifest, settings, filename=filename)
     except Exception as exc:
         logger.error("Summary generation failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Summary generation failed: {exc}") from exc
 
     manifest.summary_generated = True
+    manifest.summary_filename = filename
     await save_session_manifest(manifest, settings)
 
     return SummaryResponse(
@@ -533,14 +544,66 @@ async def download_summary(
     settings: Annotated[Settings, Depends(get_settings)],
     token: Annotated[str, Depends(require_auth)],
 ) -> FileResponse:
-    summary_path = session_dir(settings.data_dir, session_id) / "summary.md"
+    manifest = await get_session_manifest(session_id, settings)
+    filename = (manifest.summary_filename if manifest else None) or "summary.md"
+    summary_path = session_dir(settings.data_dir, session_id) / filename
     if not summary_path.exists():
         raise HTTPException(status_code=404, detail="Summary not yet generated")
+
+    safe_name = filename.replace('"', '')
+    return FileResponse(
+        path=str(summary_path),
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+    )
+
+
+@app.get("/api/summaries")
+async def list_user_summaries(
+    settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
+) -> list[dict]:
+    _, username = verify_token(token)
+    safe_user = re.sub(r"[^\w]", "_", username or "user")[:32]
+
+    logs_path = Path(settings.logs_dir)
+    if not logs_path.exists():
+        return []
+
+    _valid = re.compile(r"^summary_\d{8}_\d{6}_[\w]+\.md$")
+    files = sorted(
+        [f for f in logs_path.glob(f"*_{safe_user}.md") if _valid.match(f.name)],
+        key=lambda f: f.stat().st_mtime,
+        reverse=True,
+    )
+    return [
+        {"filename": f.name, "size": f.stat().st_size, "created_at": f.stat().st_mtime}
+        for f in files
+    ]
+
+
+@app.get("/api/summaries/{filename}")
+async def download_summary_from_logs(
+    filename: str,
+    settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
+) -> FileResponse:
+    _, username = verify_token(token)
+    safe_user = re.sub(r"[^\w]", "_", username or "user")[:32]
+
+    # Strict validation: correct format + belongs to requesting user
+    _valid = re.compile(r"^summary_\d{8}_\d{6}_[\w]+\.md$")
+    if not _valid.match(filename) or not filename.endswith(f"_{safe_user}.md"):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    summary_path = Path(settings.logs_dir) / filename
+    if not summary_path.exists():
+        raise HTTPException(status_code=404, detail="Summary not found")
 
     return FileResponse(
         path=str(summary_path),
         media_type="text/markdown; charset=utf-8",
-        headers={"Content-Disposition": 'attachment; filename="summary.md"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -13,3 +13,11 @@ class LLMProvider(Protocol):
         images: list[bytes] | None = None,
         max_tokens: int = 2048,
     ) -> dict: ...
+
+    async def complete_text(
+        self,
+        model: str,
+        system: str,
+        user: str,
+        max_tokens: int = 2048,
+    ) -> str: ...

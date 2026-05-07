@@ -15,9 +15,10 @@ logger = logging.getLogger(__name__)
 async def export_summary(
     manifest: SessionManifest,
     settings: Settings,
+    filename: str = "summary.md",
 ) -> Path:
     """
-    Generate the operational summary.md and write it to the session folder.
+    Generate the operational summary and write it to the session folder.
     Returns the path to the written file.
     """
     logger.info("Generating summary for session %s", manifest.session_id)
@@ -30,7 +31,14 @@ async def export_summary(
         settings=settings,
     )
 
-    out_path = session_dir(settings.data_dir, manifest.session_id) / "summary.md"
+    out_path = session_dir(settings.data_dir, manifest.session_id) / filename
     write_markdown(out_path, markdown_text)
     logger.info("Summary written to %s", out_path)
+
+    # Also persist to shared logs volume
+    logs_path = Path(settings.logs_dir)
+    logs_path.mkdir(parents=True, exist_ok=True)
+    write_markdown(logs_path / filename, markdown_text)
+    logger.info("Summary also persisted to logs: %s", logs_path / filename)
+
     return out_path

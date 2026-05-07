@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     context_window_segments: int = 6
     session_ttl_hours: int = 24
     data_dir: str = "/app/data"
+    logs_dir: str = "/app/logs"
     max_image_mb: int = 10
 
     # Eval
@@ -68,7 +69,7 @@ class Settings(BaseSettings):
     frontend_port: int = 5173
     cors_origins: str = "http://localhost:5173"
 
-    @field_validator("data_dir", mode="before")
+    @field_validator("data_dir", "logs_dir", mode="before")
     @classmethod
     def resolve_data_dir(cls, v: str) -> str:
         return os.path.expandvars(os.path.expanduser(v))

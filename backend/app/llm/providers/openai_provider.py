@@ -34,6 +34,22 @@ class OpenAIProvider:
         logger.debug("OpenAI %s response: %d chars", model, len(raw))
         return self._parse_json(raw)
 
+    async def complete_text(
+        self,
+        model: str,
+        system: str,
+        user: str,
+        max_tokens: int = 2048,
+    ) -> str:
+        messages = self._build_messages(system, user, None)
+        response = await self._client.chat.completions.create(
+            model=model,
+            messages=messages,
+            max_completion_tokens=max_tokens,
+            temperature=0.2,
+        )
+        return response.choices[0].message.content or ""
+
     def _build_messages(
         self,
         system: str,

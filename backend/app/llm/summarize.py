@@ -97,15 +97,11 @@ async def generate_summary(
         len(segments), len(reconstructed_ko_full), len(translated_full),
     )
 
-    result = await provider.complete_json(
+    markdown = await provider.complete_text(
         model=model,
         system=system_prompt,
         user=json.dumps(user_payload, ensure_ascii=False),
         max_tokens=MAX_OUTPUT_TOKENS,
     )
 
-    markdown = result.get("markdown") or result.get("summary") or result.get("text", "")
-    if not markdown:
-        markdown = json.dumps(result, ensure_ascii=False, indent=2)
-
-    return str(markdown)
+    return markdown.strip()

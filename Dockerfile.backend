@@ -18,7 +18,7 @@ COPY prompts ./prompts
 # Install all dependencies
 RUN pip install --no-cache-dir .
 
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data /app/logs
 
 EXPOSE 8000
 

@@ -35,3 +35,9 @@ export interface ChunkResponse {
   status: string;
   segments: Segment[];
 }
+
+export interface SummaryItem {
+  filename: string;
+  size: number;
+  created_at: number;
+}

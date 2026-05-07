@@ -118,6 +118,7 @@ class SessionManifest(BaseModel):
     segments: list[Segment] = Field(default_factory=list)
     image_contexts: list[ImageContext] = Field(default_factory=list)
     summary_generated: bool = False
+    summary_filename: str | None = None
 
 
 class ErrorResponse(BaseModel):
