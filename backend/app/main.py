@@ -253,6 +253,7 @@ async def upload_chunk(
         },
     )
 
+    # Unify both Korean ASR outputs with Gemini, then translate the result with Gemini
     recon_result = await reconstruct_korean(
         openai_asr_ko=openai_text,
         soniox_asr_ko=soniox_text,
@@ -279,7 +280,7 @@ async def upload_chunk(
         asr_sources.append("openai")
     if soniox_text.strip():
         asr_sources.append("soniox")
-    
+
     segment_id = f"{session_id}_{chunk_index}"
     new_segment = Segment(
         segment_id=segment_id,

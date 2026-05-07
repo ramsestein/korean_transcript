@@ -37,7 +37,7 @@ async def reconstruct_korean(
     settings: Settings,
 ) -> dict:
     """
-    Call the reconstruction LLM.
+    Unify two Korean ASR outputs into a single clean Korean text using Gemini.
     Returns dict with: reconstructed_ko, confidence, uncertainties, terminology.
     """
     provider, model = get_provider("reconstruct", settings)

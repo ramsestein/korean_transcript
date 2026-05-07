@@ -43,7 +43,7 @@ async def translate_korean(
     settings: Settings,
 ) -> dict:
     """
-    Translate reconstructed Korean to target language.
+    Translate unified Korean text to the target language using Gemini.
     Returns dict with: translated_text, confidence, uncertainties.
     """
     provider, model = get_provider("translate", settings)

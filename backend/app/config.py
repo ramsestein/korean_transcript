@@ -23,18 +23,18 @@ class Settings(BaseSettings):
     soniox_api_key: str = ""
     soniox_model: str = "stt-async-v4"
 
-    # LLM stack (GPT-5.4 series)
-    llm_provider_reconstruct: str = "openai"
-    llm_model_reconstruct: str = "gpt-5.4-mini"
+    # LLM stack
+    llm_provider_reconstruct: str = "google"
+    llm_model_reconstruct: str = "gemini-2.5-flash"
 
-    llm_provider_translate: str = "openai"
-    llm_model_translate: str = "gpt-5.4-mini"
+    llm_provider_translate: str = "google"
+    llm_model_translate: str = "gemini-2.5-flash"
 
     llm_provider_vision: str = "openai"
     llm_model_vision: str = "gpt-5.4-nano"
 
     llm_provider_summary: str = "openai"
-    llm_model_summary: str = "gpt-5.4"
+    llm_model_summary: str = "gpt-5.4-mini"
 
     llm_provider_judge_a: str = "openai"
     llm_model_judge_a: str = "gpt-5.4"
