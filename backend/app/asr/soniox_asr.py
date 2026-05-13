@@ -45,7 +45,15 @@ async def transcribe_with_soniox(
         logger.info("Soniox transcription completed")
 
     tokens = result.get("tokens", [])
-    text = _tokens_to_text(tokens)
+    # Normalize timestamps: Soniox returns start_ms/end_ms (int, milliseconds)
+    # but the rest of the pipeline expects start/end (float, seconds).
+    for tok in tokens:
+        if "start_ms" in tok and "start" not in tok:
+            tok["start"] = tok["start_ms"] / 1000.0
+        if "end_ms" in tok and "end" not in tok:
+            tok["end"] = tok["end_ms"] / 1000.0
+    # Prefer the pre-built text from the transcript endpoint over reconstruction.
+    text = result.get("text") or _tokens_to_text(tokens)
 
     logger.info(
         "Soniox ASR SUCCESS: model=%s, text_len=%d, tokens=%d",
@@ -91,7 +99,6 @@ async def _create_transcription(
         "model": model,
         "language_hints": ["ko"],
         "enable_speaker_diarization": False,  # Disabled for chunk-level processing
-        "include_timestamps": True,
     }
     logger.info("Soniox create transcription payload: %s", payload)
     
@@ -139,7 +146,7 @@ async def _poll_until_done(
             logger.info("Soniox transcription %s status: %s", transcription_id, status)
             last_status = status
         
-        if status in ("completed", "done", "finished"):
+        if status == "completed":
             logger.info("Soniox transcription %s completed in %.1fs", transcription_id, elapsed)
             # Fetch actual transcript from separate endpoint
             transcript_resp = await client.get(
@@ -151,7 +158,7 @@ async def _poll_until_done(
             logger.info("Soniox transcript fetched: %d tokens", len(transcript_data.get("tokens", [])))
             return transcript_data
             
-        if status in ("failed", "error"):
+        if status == "error":
             error_msg = data.get("error_message", str(data))
             logger.error("Soniox transcription %s failed: %s", transcription_id, error_msg)
             raise RuntimeError(f"Soniox transcription failed: {error_msg}")
