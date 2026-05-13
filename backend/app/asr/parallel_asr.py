@@ -84,11 +84,18 @@ async def _safe_transcribe_with_retry(
         if result is not None:
             return result, None
         
-        # Check if it's a resource exhaustion error
-        if error and "resource_exhausted" in error.lower():
+        # Check if it's a rate-limiting error (429 or resource exhaustion)
+        _err_lower = error.lower() if error else ""
+        is_rate_limited = (
+            "429" in (error or "")
+            or "rate limit" in _err_lower
+            or "too many requests" in _err_lower
+            or "resource_exhausted" in _err_lower
+        )
+        if is_rate_limited:
             wait_time = 2 ** attempt  # 1s, 2s, 4s
-            logger.warning("Soniox resource exhausted (attempt %d/%d), retrying in %ds...", 
-                          attempt + 1, max_retries, wait_time)
+            logger.warning("Soniox rate limited (attempt %d/%d), retrying in %ds...",
+                           attempt + 1, max_retries, wait_time)
             await asyncio.sleep(wait_time)
             continue
         else:

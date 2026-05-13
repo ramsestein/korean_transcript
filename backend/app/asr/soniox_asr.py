@@ -41,8 +41,12 @@ async def transcribe_with_soniox(
         logger.info("Soniox transcription job created, id=%s", transcription_id)
         
         logger.info("Polling for transcription completion...")
-        result = await _poll_until_done(client, transcription_id, api_key)
-        logger.info("Soniox transcription completed")
+        try:
+            result = await _poll_until_done(client, transcription_id, api_key)
+            logger.info("Soniox transcription completed")
+        finally:
+            # Always clean up remote resources to avoid hitting file/transcription limits
+            await _delete_resources(client, file_id, transcription_id, api_key)
 
     tokens = result.get("tokens", [])
     # Normalize timestamps: Soniox returns start_ms/end_ms (int, milliseconds)
@@ -80,6 +84,8 @@ async def _upload_file(
             headers={"Authorization": f"Bearer {api_key}"},
             files={"file": (audio_path.name, f, "audio/wav")},
         )
+    if response.status_code == 429:
+        raise RuntimeError(f"Soniox rate limited on file upload: {response.text}")
     response.raise_for_status()
     data = response.json()
     file_id = data.get("id") or data.get("file_id")
@@ -170,6 +176,33 @@ async def _poll_until_done(
     raise TimeoutError(
         f"Soniox transcription {transcription_id} did not complete within {MAX_POLL_SECONDS}s"
     )
+
+
+async def _delete_resources(
+    client: httpx.AsyncClient,
+    file_id: str,
+    transcription_id: str,
+    api_key: str,
+) -> None:
+    """Delete file and transcription from Soniox to avoid hitting storage limits."""
+    headers = {"Authorization": f"Bearer {api_key}"}
+    try:
+        resp = await client.delete(f"{SONIOX_BASE_URL}/transcriptions/{transcription_id}", headers=headers)
+        if resp.status_code not in (200, 204, 404):
+            logger.warning("Soniox delete transcription %s returned %s", transcription_id, resp.status_code)
+        else:
+            logger.debug("Soniox transcription %s deleted", transcription_id)
+    except Exception as exc:
+        logger.warning("Soniox delete transcription %s failed: %s", transcription_id, exc)
+
+    try:
+        resp = await client.delete(f"{SONIOX_BASE_URL}/files/{file_id}", headers=headers)
+        if resp.status_code not in (200, 204, 404):
+            logger.warning("Soniox delete file %s returned %s", file_id, resp.status_code)
+        else:
+            logger.debug("Soniox file %s deleted", file_id)
+    except Exception as exc:
+        logger.warning("Soniox delete file %s failed: %s", file_id, exc)
 
 
 def _tokens_to_text(tokens: list[dict[str, Any]]) -> str:
