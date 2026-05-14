@@ -1,6 +1,6 @@
 # Korean Meeting Interpreter
 
-Real-time Korean-to-multilingual meeting interpreter. Capture audio from your browser, get live transcription, reconstruction, and translation to Spanish, English, or Chinese. Upload meeting images for additional context.
+No real real-time Korean-to-multilingual for meeting and conference interpreter. Capture audio from your browser, get live transcription, reconstruction, and translation to Spanish, English, or Chinese. Upload meeting images for additional context.
 
 ## Features
 
