@@ -73,8 +73,15 @@ class GoogleProvider:
 
     @staticmethod
     def _parse_json(raw: str) -> dict:
+        # Gemini occasionally wraps JSON in markdown fences despite response_mime_type=application/json
+        stripped = raw.strip()
+        if stripped.startswith("```"):
+            lines = stripped.splitlines()
+            # Drop first line (```json or ```) and last line (```)
+            inner = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+            stripped = inner.strip()
         try:
-            return json.loads(raw)
+            return json.loads(stripped)
         except json.JSONDecodeError as exc:
             logger.error("Failed to parse Gemini JSON response: %s | raw=%s", exc, raw[:200])
             raise ValueError(f"LLM returned invalid JSON: {exc}") from exc

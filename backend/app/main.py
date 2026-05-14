@@ -255,25 +255,33 @@ async def upload_chunk(
     )
 
     # Unify both Korean ASR outputs with Gemini, then translate the result with Gemini
-    recon_result = await reconstruct_korean(
-        openai_asr_ko=openai_text,
-        soniox_asr_ko=soniox_text,
-        soniox_speakers=[t.model_dump() for t in soniox_speakers],
-        agreement=agreement,
-        previous_segments=manifest.segments,
-        meeting_prompt=manifest.meeting_prompt,
-        image_contexts=manifest.image_contexts,
-        settings=settings,
-    )
+    try:
+        recon_result = await reconstruct_korean(
+            openai_asr_ko=openai_text,
+            soniox_asr_ko=soniox_text,
+            soniox_speakers=[t.model_dump() for t in soniox_speakers],
+            agreement=agreement,
+            previous_segments=manifest.segments,
+            meeting_prompt=manifest.meeting_prompt,
+            image_contexts=manifest.image_contexts,
+            settings=settings,
+        )
+    except Exception as exc:
+        logger.error("reconstruct_korean failed for chunk %d: %s", chunk_index, exc, exc_info=True)
+        raise HTTPException(status_code=503, detail=f"LLM reconstruction failed: {type(exc).__name__}: {exc}") from exc
 
-    trans_result = await translate_korean(
-        reconstructed_ko=recon_result["reconstructed_ko"],
-        target_language=manifest.target_language,
-        previous_segments=manifest.segments,
-        meeting_prompt=manifest.meeting_prompt,
-        image_contexts=manifest.image_contexts,
-        settings=settings,
-    )
+    try:
+        trans_result = await translate_korean(
+            reconstructed_ko=recon_result["reconstructed_ko"],
+            target_language=manifest.target_language,
+            previous_segments=manifest.segments,
+            meeting_prompt=manifest.meeting_prompt,
+            image_contexts=manifest.image_contexts,
+            settings=settings,
+        )
+    except Exception as exc:
+        logger.error("translate_korean failed for chunk %d: %s", chunk_index, exc, exc_info=True)
+        raise HTTPException(status_code=503, detail=f"LLM translation failed: {type(exc).__name__}: {exc}") from exc
 
     # Determine which ASR models heard this segment
     asr_sources = []

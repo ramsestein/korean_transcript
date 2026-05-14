@@ -31,7 +31,8 @@ async def transcribe_with_soniox(
     
     logger.debug("Soniox API key present: %s...", api_key[:10] if len(api_key) > 10 else "(short)")
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    # Upload/create use 30s timeout; individual poll requests use a longer timeout
+    async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
         logger.info("Uploading file to Soniox...")
         file_id = await _upload_file(client, audio_path, api_key)
         logger.info("Soniox file uploaded, id=%s", file_id)
