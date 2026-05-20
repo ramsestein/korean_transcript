@@ -75,5 +75,15 @@ class OpenAIProvider:
         try:
             return json.loads(raw)
         except json.JSONDecodeError as exc:
-            logger.error("Failed to parse OpenAI JSON response: %s | raw=%s", exc, raw[:200])
-            raise ValueError(f"LLM returned invalid JSON: {exc}") from exc
+            logger.warning(
+                "OpenAI returned malformed JSON (%s), attempting repair | raw=%s", exc, raw[:200]
+            )
+            try:
+                from json_repair import repair_json  # type: ignore[import-untyped]
+                repaired = repair_json(raw, return_objects=True)
+                if isinstance(repaired, dict):
+                    return repaired
+            except Exception as repair_exc:
+                logger.warning("json_repair also failed: %s", repair_exc)
+            logger.error("Could not parse OpenAI response as JSON; returning raw text | raw=%s", raw[:200])
+            return {"__raw__": raw}

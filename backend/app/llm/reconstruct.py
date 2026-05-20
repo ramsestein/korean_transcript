@@ -75,13 +75,22 @@ async def reconstruct_korean(
         model=model,
         system=system_prompt,
         user=json.dumps(user_payload, ensure_ascii=False),
-        max_tokens=2048,
+        max_tokens=4096,
     )
 
     return _validate_reconstruct_result(result)
 
 
 def _validate_reconstruct_result(result: dict) -> dict:
+    # If JSON parsing failed entirely, use the raw LLM output as the Korean text
+    if "__raw__" in result and "reconstructed_ko" not in result:
+        logger.warning("Using raw LLM response as reconstructed_ko fallback")
+        return {
+            "reconstructed_ko": str(result["__raw__"]),
+            "confidence": "low",
+            "uncertainties": ["JSON parse failed — raw ASR text used"],
+            "terminology": [],
+        }
     return {
         "reconstructed_ko": str(result.get("reconstructed_ko", "")),
         "confidence": result.get("confidence", "low") if result.get("confidence") in ("high", "medium", "low") else "low",
