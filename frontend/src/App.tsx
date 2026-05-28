@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChunkRecorder } from './recorder';
-import { startSession, generateSummary, deleteSession, uploadImages, uploadChunk, listSummaries, downloadSummaryFile } from './api';
+import { startSession, generateSummary, deleteSession, uploadImages, uploadChunk, listSummaries, downloadSummaryFile, exportDataZip } from './api';
 import { Login } from './Login';
 import { getAuthToken, setAuthToken, clearAuthToken } from './cookies';
 import type { Language, ChunkInfo, Segment, ChunkResponse, SummaryItem } from './types';
@@ -75,6 +75,22 @@ export default function App() {
     window.location.reload();
   }, []);
 
+  const handleExportData = useCallback(async () => {
+    if (!token) return;
+    setError(null);
+    try {
+      const blob = await exportDataZip(token);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'data_export.zip';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [token]);
+
   const handleViewHistory = useCallback(() => {
     setPhase('summaries');
   }, []);
@@ -107,7 +123,7 @@ export default function App() {
       void patchedUpload;
 
       // We patch the uploadChunk inside recorder by subclassing
-      const patchedRecorder = new PatchedRecorder(sid, token, handleNewSegments);
+      const patchedRecorder = new PatchedRecorder(sid, token, handleNewSegments, handleLogout);
       recorderRef.current = patchedRecorder;
       await patchedRecorder.start(sid, token, CHUNK_SECONDS, onChunkUpdate);
 
@@ -115,9 +131,14 @@ export default function App() {
       setElapsed(0);
       timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
     } catch (e) {
-      setError(String(e));
+      const msg = String(e);
+      if (msg.includes('AUTH_EXPIRED:')) {
+        handleLogout();
+        return;
+      }
+      setError(msg);
     }
-  }, [language, meetingPrompt, imageFiles, token, onChunkUpdate, handleNewSegments]);
+  }, [language, meetingPrompt, imageFiles, token, onChunkUpdate, handleNewSegments, handleLogout]);
 
   const handleStop = useCallback(async () => {
     recorderRef.current?.stop();
@@ -209,6 +230,9 @@ export default function App() {
         </div>
         <div style={{ textAlign: 'right' }}>
           {username && <span style={{ color: 'var(--text2)', marginRight: 12 }}>👤 {username}</span>}
+          {username === 'ramses' && (
+            <button className="btn-outline" onClick={handleExportData} style={{ marginRight: 8 }}>⬇ Export data</button>
+          )}
           <button className="btn-secondary" onClick={handleLogout}>Logout</button>
         </div>
       </div>
@@ -438,13 +462,15 @@ class PatchedRecorder {
   private sid: string;
   private token: string;
   private onSegs: (segs: Segment[]) => void;
+  private onAuthExpired?: () => void;
   private _mr: MediaRecorder | null = null;
   private _stream: MediaStream | null = null;
 
-  constructor(sid: string, token: string, onSegs: (segs: Segment[]) => void) {
+  constructor(sid: string, token: string, onSegs: (segs: Segment[]) => void, onAuthExpired?: () => void) {
     this.sid = sid;
     this.token = token;
     this.onSegs = onSegs;
+    this.onAuthExpired = onAuthExpired;
   }
 
   async start(sessionId: string, token: string, chunkSeconds: number, onUpdate: (c: ChunkInfo) => void): Promise<void> {
@@ -470,10 +496,15 @@ class PatchedRecorder {
             if (resp.segments?.length) this.onSegs(resp.segments);
           })
           .catch((err: unknown) => {
+            const errMsg = String(err);
+            if (errMsg.includes('AUTH_EXPIRED:')) {
+              this.onAuthExpired?.();
+              return;
+            }
             if (retries > 0) {
               setTimeout(() => attempt(retries - 1), 2000);
             } else {
-              onUpdate({ index: idx, status: 'error', error: String(err) });
+              onUpdate({ index: idx, status: 'error', error: errMsg });
             }
           });
       };

@@ -12,6 +12,11 @@ import aiofiles
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
+from starlette.background import BackgroundTask
+import tempfile
+import zipfile
+import os
+from datetime import datetime
 
 from app.asr.agreement import compute_agreement
 from app.asr.parallel_asr import run_parallel_asr
@@ -137,6 +142,45 @@ async def logout(request: Request) -> JSONResponse:
         revoke_token(token)
     
     return JSONResponse({"message": "Logout successful"})
+
+
+@app.get("/api/admin/export-data")
+async def admin_export_data(
+    settings: Annotated[Settings, Depends(get_settings)],
+    token: Annotated[str, Depends(require_auth)],
+) -> FileResponse:
+    """Create a zip of the entire data directory and return it as a download.
+
+    Requires authentication via `require_auth`.
+    """
+    data_dir = Path(settings.data_dir)
+    if not data_dir.exists():
+        raise HTTPException(status_code=404, detail="Data directory not found")
+
+    ts = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+    tmp = tempfile.NamedTemporaryFile(prefix=f"data_export_{ts}_", suffix='.zip', delete=False)
+    tmp_path = Path(tmp.name)
+    tmp.close()
+
+    # Walk data_dir and add files preserving structure under data_dir
+    with zipfile.ZipFile(tmp_path, 'w', compression=zipfile.ZIP_DEFLATED) as z:
+        for root, dirs, files in os.walk(data_dir):
+            root_path = Path(root)
+            for fname in files:
+                full = root_path / fname
+                try:
+                    arc = full.relative_to(data_dir)
+                except Exception:
+                    arc = full.name
+                z.write(full, arcname=str(arc))
+
+    def _cleanup(path: str):
+        try:
+            os.remove(path)
+        except Exception:
+            logger.exception('Failed to remove temp export: %s', path)
+
+    return FileResponse(str(tmp_path), filename=f"data_export_{ts}.zip", media_type='application/zip', background=BackgroundTask(_cleanup, str(tmp_path)))
 
 
 @app.post("/api/session/start", response_model=SessionStartResponse)

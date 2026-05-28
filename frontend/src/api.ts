@@ -49,6 +49,7 @@ export async function uploadChunk(
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
+    if (res.status === 401) throw new Error(`AUTH_EXPIRED: ${err.detail || 'Unauthorized'}`);
     throw new Error(`Chunk ${index} failed: ${err.detail || res.status}`);
   }
   return res.json() as Promise<ChunkResponse>;
@@ -85,6 +86,15 @@ export async function deleteSession(token: string, sessionId: string): Promise<v
     method: 'DELETE',
     headers: getHeaders(token),
   });
+}
+
+export async function exportDataZip(token: string): Promise<Blob> {
+  const res = await fetch('/api/admin/export-data', {
+    method: 'GET',
+    headers: getHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  return res.blob();
 }
 
 export async function listSummaries(token: string): Promise<SummaryItem[]> {
