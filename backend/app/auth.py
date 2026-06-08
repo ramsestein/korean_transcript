@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+from pathlib import Path
 import secrets
 import time
 from dataclasses import dataclass
@@ -59,13 +60,40 @@ def get_users_from_env() -> dict[str, str]:
     Returns dict: {lowercase_username: password}
     Example: USER1_USER=pass123 -> {'user1': 'pass123'}
     """
-    users = {}
+    users: dict[str, str] = {}
+
+    # 1) Prefer real env vars
     for key, value in os.environ.items():
         if key.upper().endswith('_USER') and not key.upper().startswith('AUTH'):
-            # Extract username from VARNAME_USER
             username = key.upper().replace('_USER', '').lower()
-            if username:  # Ignore empty usernames
+            if username:
                 users[username] = value
+
+    # 2) Fallback: parse .env files in repo root or parent (if not found in env)
+    if not users:
+        # search for .env in current working dir and parent
+        candidates = [Path('.env'), Path('../.env')]
+        for cand in candidates:
+            try:
+                if cand.exists():
+                    with cand.open('r', encoding='utf-8') as f:
+                        for line in f:
+                            line = line.strip()
+                            if not line or line.startswith('#') or '=' not in line:
+                                continue
+                            k, v = line.split('=', 1)
+                            k = k.strip()
+                            v = v.strip().strip('"').strip("'")
+                            if k.upper().endswith('_USER') and not k.upper().startswith('AUTH'):
+                                username = k.upper().replace('_USER', '').lower()
+                                if username and v:
+                                    users[username] = v
+                    if users:
+                        break
+            except Exception:
+                # ignore parsing errors and continue
+                continue
+
     return users
 
 

@@ -99,6 +99,14 @@ export default function App() {
     if (!language || !token) return;
     setError(null);
     try {
+      // Abandon any previous recorder before starting a new one
+      if (recorderRef.current) {
+        const r = recorderRef.current;
+        if ('abandon' in r) (r as PatchedRecorder).abandon();
+        else r.stop();
+        recorderRef.current = null;
+      }
+
       const sid = await startSession(token, language, meetingPrompt, CHUNK_SECONDS);
       setSessionId(sid);
 
@@ -123,6 +131,7 @@ export default function App() {
       void patchedUpload;
 
       // We patch the uploadChunk inside recorder by subclassing
+      segmentMapRef.current.clear();
       const patchedRecorder = new PatchedRecorder(sid, token, handleNewSegments, handleLogout);
       recorderRef.current = patchedRecorder;
       await patchedRecorder.start(sid, token, CHUNK_SECONDS, onChunkUpdate);
@@ -199,6 +208,11 @@ export default function App() {
   }, []);
 
   const handleEnd = useCallback(async () => {
+    if (recorderRef.current && 'abandon' in recorderRef.current) {
+      (recorderRef.current as PatchedRecorder).abandon();
+    } else {
+      recorderRef.current?.stop();
+    }
     if (!sessionId || !token) return;
     await deleteSession(token, sessionId);
     setPhase('setup');
@@ -465,12 +479,19 @@ class PatchedRecorder {
   private onAuthExpired?: () => void;
   private _mr: MediaRecorder | null = null;
   private _stream: MediaStream | null = null;
+  private _abandoned = false;
 
   constructor(sid: string, token: string, onSegs: (segs: Segment[]) => void, onAuthExpired?: () => void) {
     this.sid = sid;
     this.token = token;
     this.onSegs = onSegs;
     this.onAuthExpired = onAuthExpired;
+  }
+
+  /** Stop and discard any future callbacks from in-flight uploads. */
+  abandon(): void {
+    this._abandoned = true;
+    this.stop();
   }
 
   async start(sessionId: string, token: string, chunkSeconds: number, onUpdate: (c: ChunkInfo) => void): Promise<void> {
@@ -487,15 +508,19 @@ class PatchedRecorder {
     let stopped = false;
 
     const upload = (blob: Blob, idx: number, start: number, end: number) => {
+      if (this._abandoned) return;
       onUpdate({ index: idx, status: 'uploading' });
       console.log(`[Recorder] Uploading chunk ${idx}, token available:`, !!token, 'token start:', token ? token.substring(0, 10) : 'none');
       const attempt = (retries: number) => {
+        if (this._abandoned) return;
         uploadChunk(token, sessionId, idx, blob, start, end)
           .then((resp: ChunkResponse) => {
+            if (this._abandoned) return;
             onUpdate({ index: idx, status: 'done' });
             if (resp.segments?.length) this.onSegs(resp.segments);
           })
           .catch((err: unknown) => {
+            if (this._abandoned) return;
             const errMsg = String(err);
             if (errMsg.includes('AUTH_EXPIRED:')) {
               this.onAuthExpired?.();

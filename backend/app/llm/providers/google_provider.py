@@ -4,14 +4,27 @@ import io
 import json
 import logging
 
-from google import genai
-from google.genai import types
-
 logger = logging.getLogger(__name__)
 
+# Try to import Google GenAI SDK. If it's not installed, set placeholders
+# so the app can start and we provide a clear error when the provider is used.
+try:
+    from google import genai  # type: ignore
+    from google.genai import types  # type: ignore
+except Exception as exc:  # pragma: no cover - runtime import handling
+    genai = None  # type: ignore
+    types = None  # type: ignore
+    logger.warning(
+        "Google GenAI SDK not available: %s. To enable Google provider, run: `pip install google-genai`",
+        exc,
+    )
 
 class GoogleProvider:
     def __init__(self, api_key: str) -> None:
+        if genai is None:
+            raise ImportError(
+                "Google GenAI SDK not installed. Install with: pip install google-genai"
+            )
         self._client = genai.Client(api_key=api_key)
 
     async def complete_json(

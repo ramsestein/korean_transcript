@@ -65,3 +65,4 @@ Thumbs.db
 # Test outputs
 tests/prompt_eval/eval_results/
 tests/fixtures/asr_responses/*.json
+exam/

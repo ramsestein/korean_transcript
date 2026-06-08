@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +14,8 @@ from app.session.store import (
     session_dir,
     write_json,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _manifest_path(data_dir: str, session_id: str) -> Path:
@@ -67,6 +70,12 @@ async def append_segment(
 ) -> None:
     manifest = await get_session_manifest(session_id, settings)
     if manifest is None:
+        logger.warning("append_segment: session %s not found (may have been deleted) — discarding segment", session_id)
+        return
+    # Double-check session directory still exists (may have been removed between
+    # get_session_manifest and save_session_manifest)
+    if not Path(settings.data_dir, session_id).exists():
+        logger.warning("append_segment: session %s directory gone — discarding segment", session_id)
         return
     existing = {s.segment_id: i for i, s in enumerate(manifest.segments)}
     if segment.segment_id in existing:

@@ -1,6 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import sys
+
+# On Windows, the default event loop may not support subprocesses used by ffmpeg.
+# Ensure we use the ProactorEventLoopPolicy which supports subprocesses.
+if sys.platform == "win32":
+    try:
+        asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    except Exception:
+        pass
 import logging
 import re
 import uuid
@@ -326,6 +335,22 @@ async def upload_chunk(
     except Exception as exc:
         logger.error("translate_korean failed for chunk %d: %s", chunk_index, exc, exc_info=True)
         raise HTTPException(status_code=503, detail=f"LLM translation failed: {type(exc).__name__}: {exc}") from exc
+
+    # Re-validate session still exists — it may have been deleted during the
+    # long-running ASR + LLM processing above. If gone, silently discard.
+    if await get_session_manifest(session_id, settings) is None:
+        logger.warning("Session %s deleted while chunk %d was processing — discarding", session_id, chunk_index)
+        # Clean up temp audio files for this chunk
+        for p in [raw_path, wav_path, aug_path]:
+            try:
+                p.unlink(missing_ok=True)
+            except Exception:
+                pass
+        return ChunkResponse(
+            chunk_index=chunk_index,
+            status="discarded_session_closed",
+            segments=[],
+        )
 
     # Determine which ASR models heard this segment
     asr_sources = []

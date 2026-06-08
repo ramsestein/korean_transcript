@@ -5,6 +5,7 @@ import glob
 import logging
 import os
 import shutil
+import subprocess
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -64,17 +65,31 @@ async def convert_to_wav_16k_mono(input_path: Path, output_path: Path) -> None:
         str(output_path),
     ]
     logger.debug("Running ffmpeg: %s", " ".join(cmd))
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-    if proc.returncode != 0:
+
+    async def _run_cmd(cmd_list):
+        """Try to run subprocess asynchronously; fall back to blocking run in a thread on Windows where Proactor may not be set."""
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd_list,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            return proc.returncode, stdout, stderr
+        except NotImplementedError:
+            # Fallback: run blocking subprocess in a thread to avoid event loop transport issues
+            def _blocking():
+                res = subprocess.run(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                return res.returncode, res.stdout, res.stderr
+
+            return await asyncio.to_thread(_blocking)
+
+    rc, stdout, stderr = await _run_cmd(cmd)
+    if rc != 0:
         err_text = stderr.decode('utf-8', errors='replace')[:500]
-        logger.error("ffmpeg rc=%d stderr: %s", proc.returncode, err_text)
+        logger.error("ffmpeg rc=%d stderr: %s", rc, err_text)
         raise RuntimeError(
-            f"ffmpeg rc={proc.returncode}: {err_text or '(no stderr)'}"
+            f"ffmpeg rc={rc}: {err_text or '(no stderr)'}"
         )
     logger.debug("ffmpeg done: %s -> %s", input_path, output_path)
 
@@ -89,13 +104,24 @@ async def get_audio_duration(wav_path: Path) -> float:
         "-of", "csv=p=0",
         str(wav_path),
     ]
-    proc = await asyncio.create_subprocess_exec(
-        *cmd,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    stdout, stderr = await proc.communicate()
-    if proc.returncode != 0:
+    async def _run_cmd(cmd_list):
+        try:
+            proc = await asyncio.create_subprocess_exec(
+                *cmd_list,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await proc.communicate()
+            return proc.returncode, stdout, stderr
+        except NotImplementedError:
+            def _blocking():
+                res = subprocess.run(cmd_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                return res.returncode, res.stdout, res.stderr
+
+            return await asyncio.to_thread(_blocking)
+
+    rc, stdout, stderr = await _run_cmd(cmd)
+    if rc != 0:
         logger.warning("ffprobe failed: %s", stderr.decode()[:200])
         return 0.0
     try:

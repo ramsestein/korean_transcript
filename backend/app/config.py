@@ -74,6 +74,14 @@ class Settings(BaseSettings):
     def resolve_data_dir(cls, v: str) -> str:
         return os.path.expandvars(os.path.expanduser(v))
 
+    @field_validator("google_api_key", mode="before")
+    @classmethod
+    def resolve_google_key(cls, v: str) -> str:
+        # Allow using GEMINI_API_KEY in env/.env as an alias for google_api_key
+        if v:
+            return v
+        return os.environ.get('GEMINI_API_KEY', '')
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -89,5 +97,32 @@ _settings: Settings | None = None
 def get_settings() -> Settings:
     global _settings
     if _settings is None:
+        # Ensure GEMINI_API_KEY from .env is available as GOOGLE_API_KEY
+        try:
+            if not os.environ.get('GOOGLE_API_KEY'):
+                # prefer environment first
+                if os.environ.get('GEMINI_API_KEY'):
+                    os.environ['GOOGLE_API_KEY'] = os.environ['GEMINI_API_KEY']
+                else:
+                    for cand in (Path('.env'), Path('../.env')):
+                        try:
+                            if cand.exists():
+                                with cand.open('r', encoding='utf-8') as f:
+                                    for line in f:
+                                        line = line.strip()
+                                        if not line or line.startswith('#') or '=' not in line:
+                                            continue
+                                        k, v = line.split('=', 1)
+                                        k = k.strip()
+                                        v = v.strip().strip('"').strip("'")
+                                        if k == 'GEMINI_API_KEY' and v:
+                                            os.environ['GOOGLE_API_KEY'] = v
+                                            break
+                                if os.environ.get('GOOGLE_API_KEY'):
+                                    break
+                        except Exception:
+                            continue
+        except Exception:
+            pass
         _settings = Settings()
     return _settings
