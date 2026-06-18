@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     google_api_key: str = ""
 
+    # Fallback LLM stack (used when primary provider hits rate limits like 429)
+    llm_fallback_provider_reconstruct: str = "openai"
+    llm_fallback_model_reconstruct: str = "gpt-5.4-mini"
+
+    llm_fallback_provider_translate: str = "openai"
+    llm_fallback_model_translate: str = "gpt-5.4-mini"
+
     # Pipeline
     default_chunk_seconds: int = 15
     default_overlap_seconds: int = 2

@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from app.config import Settings
-from app.llm.client import get_provider
+from app.llm.client import complete_with_fallback
 from app.schemas import AgreementMetrics, ImageContext, Segment
 
 logger = logging.getLogger(__name__)
@@ -40,7 +40,6 @@ async def reconstruct_korean(
     Unify two Korean ASR outputs into a single clean Korean text using Gemini.
     Returns dict with: reconstructed_ko, confidence, uncertainties, terminology.
     """
-    provider, model = get_provider("reconstruct", settings)
     system_prompt = _load_prompt()
 
     prev_ko = [s.reconstructed_ko for s in previous_segments[-settings.context_window_segments:]]
@@ -71,11 +70,15 @@ async def reconstruct_korean(
         "image_context": image_ctx_list,
     }
 
-    result = await provider.complete_json(
-        model=model,
-        system=system_prompt,
-        user=json.dumps(user_payload, ensure_ascii=False),
-        max_tokens=4096,
+    result = await complete_with_fallback(
+        "reconstruct",
+        settings,
+        lambda p, m: p.complete_json(
+            model=m,
+            system=system_prompt,
+            user=json.dumps(user_payload, ensure_ascii=False),
+            max_tokens=4096,
+        ),
     )
 
     return _validate_reconstruct_result(result)

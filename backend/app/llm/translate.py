@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 
 from app.config import Settings
-from app.llm.client import get_provider
+from app.llm.client import complete_with_fallback
 from app.schemas import ImageContext, Segment, TargetLanguage
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,6 @@ async def translate_korean(
     Translate unified Korean text to the target language using Gemini.
     Returns dict with: translated_text, confidence, uncertainties.
     """
-    provider, model = get_provider("translate", settings)
     system_prompt = _load_prompt(target_language)
 
     prev_translations = [
@@ -71,11 +70,15 @@ async def translate_korean(
         "target_language": target_language,
     }
 
-    result = await provider.complete_json(
-        model=model,
-        system=system_prompt,
-        user=json.dumps(user_payload, ensure_ascii=False),
-        max_tokens=2048,
+    result = await complete_with_fallback(
+        "translate",
+        settings,
+        lambda p, m: p.complete_json(
+            model=m,
+            system=system_prompt,
+            user=json.dumps(user_payload, ensure_ascii=False),
+            max_tokens=2048,
+        ),
     )
 
     return _validate_translate_result(result)
