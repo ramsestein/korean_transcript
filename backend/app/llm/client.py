@@ -8,7 +8,6 @@ T = TypeVar("T")
 from app.config import Settings
 from app.llm.providers.anthropic_provider import AnthropicProvider
 from app.llm.providers.base import LLMProvider
-from app.llm.providers.google_provider import GoogleProvider
 from app.llm.providers.openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)
@@ -27,8 +26,6 @@ def _get_or_create_provider(provider_name: str, settings: Settings) -> LLMProvid
         provider: LLMProvider = OpenAIProvider(api_key=settings.openai_api_key)
     elif name == "anthropic":
         provider = AnthropicProvider(api_key=settings.anthropic_api_key)
-    elif name in ("google", "gemini"):
-        provider = GoogleProvider(api_key=settings.google_api_key)
     else:
         raise ValueError(f"Unknown LLM provider: '{provider_name}'")
 

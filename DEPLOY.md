@@ -32,7 +32,6 @@ docker compose up -d
 |----------|---------|---------|
 | `SONIOX_API_KEY` | empty | Dual-ASR mode for better accuracy |
 | `DEEPSEEK_API_KEY` | empty | Alternative LLM provider |
-| `GEMINI_API_KEY` | empty | Alternative LLM provider |
 | `CLAUDE_API_KEY` | empty | Alternative LLM provider |
 
 ## CORS Configuration Examples

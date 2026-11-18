@@ -9,7 +9,7 @@ from app.llm.providers.base import LLMProvider
 
 
 class FakeRateLimitError(Exception):
-    """Simulates a Google-genai style rate-limit exception."""
+    """Simulates an SDK rate-limit exception exposing a .code attribute."""
 
     def __init__(self) -> None:
         super().__init__("429 Resource exhausted")
@@ -117,11 +117,10 @@ class TestCompleteWithFallback:
 
         settings = Settings(
             openai_api_key="test",
-            google_api_key="test",
-            llm_provider_reconstruct="google",
-            llm_model_reconstruct="gemini-2.5-flash",
+            llm_provider_reconstruct="openai",
+            llm_model_reconstruct="gpt-5.4-mini",
             llm_fallback_provider_reconstruct="openai",
-            llm_fallback_model_reconstruct="gpt-5.4-mini",
+            llm_fallback_model_reconstruct="gpt-5.4-nano",
         )
 
         result = await complete_with_fallback(
@@ -154,11 +153,10 @@ class TestCompleteWithFallback:
 
         settings = Settings(
             openai_api_key="test",
-            google_api_key="test",
-            llm_provider_reconstruct="google",
-            llm_model_reconstruct="gemini-2.5-flash",
+            llm_provider_reconstruct="openai",
+            llm_model_reconstruct="gpt-5.4-mini",
             llm_fallback_provider_reconstruct="openai",
-            llm_fallback_model_reconstruct="gpt-5.4-mini",
+            llm_fallback_model_reconstruct="gpt-5.4-nano",
         )
 
         result = await complete_with_fallback(
@@ -169,7 +167,7 @@ class TestCompleteWithFallback:
         assert result == {"fallback": True}
         assert len(primary.calls) == 1
         assert len(fallback.calls) == 1
-        assert fallback.calls[0][0] == "gpt-5.4-mini"
+        assert fallback.calls[0][0] == "gpt-5.4-nano"
 
     async def test_non_429_error_raises(self, monkeypatch):
         primary = DummyProvider(exc=FakeGenericError("random error"))
@@ -181,11 +179,10 @@ class TestCompleteWithFallback:
 
         settings = Settings(
             openai_api_key="test",
-            google_api_key="test",
-            llm_provider_reconstruct="google",
-            llm_model_reconstruct="gemini-2.5-flash",
+            llm_provider_reconstruct="openai",
+            llm_model_reconstruct="gpt-5.4-mini",
             llm_fallback_provider_reconstruct="openai",
-            llm_fallback_model_reconstruct="gpt-5.4-mini",
+            llm_fallback_model_reconstruct="gpt-5.4-nano",
         )
 
         with pytest.raises(FakeGenericError, match="random error"):
@@ -205,9 +202,8 @@ class TestCompleteWithFallback:
 
         settings = Settings(
             openai_api_key="test",
-            google_api_key="test",
-            llm_provider_reconstruct="google",
-            llm_model_reconstruct="gemini-2.5-flash",
+            llm_provider_reconstruct="openai",
+            llm_model_reconstruct="gpt-5.4-mini",
             llm_fallback_provider_reconstruct="",
             llm_fallback_model_reconstruct="",
         )
@@ -239,11 +235,10 @@ class TestCompleteWithFallback:
 
         settings = Settings(
             openai_api_key="test",
-            google_api_key="test",
-            llm_provider_translate="google",
-            llm_model_translate="gemini-2.5-flash",
+            llm_provider_translate="openai",
+            llm_model_translate="gpt-5.4-mini",
             llm_fallback_provider_translate="openai",
-            llm_fallback_model_translate="gpt-5.4-mini",
+            llm_fallback_model_translate="gpt-5.4-nano",
         )
 
         result = await complete_with_fallback(
@@ -253,4 +248,4 @@ class TestCompleteWithFallback:
         )
         assert result == {"translated": "hello"}
         assert len(fallback.calls) == 1
-        assert fallback.calls[0][0] == "gpt-5.4-mini"
+        assert fallback.calls[0][0] == "gpt-5.4-nano"
