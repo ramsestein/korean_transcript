@@ -43,7 +43,7 @@ async def translate_korean(
     settings: Settings,
 ) -> dict:
     """
-    Translate unified Korean text to the target language using Gemini.
+    Translate unified Korean text to the target language using the configured LLM (default: gpt-5.4-mini).
     Returns dict with: translated_text, confidence, uncertainties.
     """
     system_prompt = _load_prompt(target_language)

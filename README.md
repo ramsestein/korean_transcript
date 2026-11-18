@@ -41,7 +41,6 @@ docker compose up -d --build
 | `AUTH_ENABLED` | No | Set `true` to enable login protection |
 | `*_USER` | If auth on | User credentials, e.g. `USER1_USER=password` creates user "user1" |
 | `SONIOX_API_KEY` | No | Soniox API key for dual-ASR mode |
-| `GOOGLE_API_KEY` | No | Google AI (Gemini) API key — used by default for reconstruct & translate |
 | `CLAUDE_API_KEY` | No | Anthropic Claude API key (stub, not yet active) |
 | `DATA_DIR` | No | Session data directory (default `/app/data`) |
 | `LOGS_DIR` | No | Persistent summary logs directory (default `/app/logs`) |
@@ -76,7 +75,7 @@ All other variables have sensible defaults in `backend/app/config.py`.
 │   │   ├── audio/        # Audio chunking and overlap handling
 │   │   ├── auth.py       # Multi-user authentication
 │   │   ├── llm/          # LLM tasks: reconstruct, translate, summarize
-│   │   │   └── providers/  # OpenAI, Google (Gemini), Anthropic (stub)
+│   │   │   └── providers/  # OpenAI, Anthropic (stub)
 │   │   ├── output/       # Markdown writer, summary export (session + logs)
 │   │   ├── session/      # Session state management
 │   │   └── main.py       # FastAPI application
@@ -108,7 +107,7 @@ All other variables have sensible defaults in `backend/app/config.py`.
 - **Backend**: Python 3.12, FastAPI, Pydantic Settings
 - **Frontend**: React 18, TypeScript, Vite
 - **ASR**: OpenAI Whisper API, optional Soniox
-- **LLM**: OpenAI GPT-5.4 series + Google Gemini 2.5 Flash (configurable per task)
+- **LLM**: OpenAI GPT-5.4 series — `gpt-5.4-mini` for reconstruct & translate (configurable per task)
 - **Audio**: ffmpeg (Docker), Web Audio API (browser)
 - **Deployment**: Docker Compose, nginx reverse proxy; persistent `logs/` volume for summaries
 - **Auth**: Multi-user with cookies (30-day session)

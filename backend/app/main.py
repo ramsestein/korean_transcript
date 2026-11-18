@@ -307,7 +307,7 @@ async def upload_chunk(
         },
     )
 
-    # Unify both Korean ASR outputs with Gemini, then translate the result with Gemini
+    # Unify both Korean ASR outputs with the LLM, then translate the result
     try:
         recon_result = await reconstruct_korean(
             openai_asr_ko=openai_text,

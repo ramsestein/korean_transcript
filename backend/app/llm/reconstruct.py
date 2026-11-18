@@ -37,7 +37,7 @@ async def reconstruct_korean(
     settings: Settings,
 ) -> dict:
     """
-    Unify two Korean ASR outputs into a single clean Korean text using Gemini.
+    Unify two Korean ASR outputs into a single clean Korean text using the configured LLM (default: gpt-5.4-mini).
     Returns dict with: reconstructed_ko, confidence, uncertainties, terminology.
     """
     system_prompt = _load_prompt()
